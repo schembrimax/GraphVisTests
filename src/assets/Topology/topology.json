@@ -1,0 +1,10 @@
+{
+    "nodes": [
+      { "data": { "id": "device1", "label": "Device 1" }, "classes": "device" },
+      { "data": { "id": "gateway1", "label": "Gateway 1" }, "classes": "gateway" },
+ 
+      { "data": { "source": "gateway1", "target": "device1", "label": "VLAN 170 (BYOD)", "controlPointDistances": "0 0" }, "classes": "layer1" },
+      { "data": { "source": "gateway2", "target": "device2", "label": "VLAN 270 (BYOD)", "controlPointDistances": "0 0" }, "classes": "layer1" }
+
+    ]
+  }

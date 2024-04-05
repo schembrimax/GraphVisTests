@@ -1,12 +1,16 @@
-import { Component, ViewChild, ElementRef, OnDestroy, AfterContentInit } from '@angular/core';
+import { Component, ViewChild, ElementRef, OnDestroy, AfterContentInit, Inject, EventEmitter, Input, Output } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { combineLatest } from 'rxjs';
 import { GraphService } from './graph.service';
 import { SparqlService } from '../sparql-service.service';
+import { HttpClientModule } from '@angular/common/http';
+import { ContextMenuModule } from 'primeng/contextmenu'
+
 import cytoscape, { BaseLayoutOptions } from 'cytoscape';
 import cola from 'cytoscape-cola';
 import elk from 'cytoscape-elk';
-import { HttpClientModule } from '@angular/common/http';
-import {LX } from 'lexgui';
+import { MenuItem } from 'primeng/api';
+
 
 interface SparqlResponse {
   head: {
@@ -27,23 +31,28 @@ interface SparqlResponse {
 @Component({
   selector: 'app-cytoscape-graph',
   standalone: true,
-  imports:[HttpClientModule],
+  imports:[HttpClientModule, CommonModule, ContextMenuModule],
   templateUrl: './cytoscape-graph.component.html',
   styleUrl: './cytoscape-graph.component.css'
 })
 
 export class CytoscapeGraphComponent {
-  @ViewChild("cy") cytoElem: ElementRef;
+  @ViewChild('cy') cytoElem: ElementRef;
+  @ViewChild('matMenu') matMenu: ElementRef;
+  @Output() optionSelected= new EventEmitter<string>();
+  isVisible:boolean=false;
+  menuLeft:string;
+  menuTop:string;
+  items:MenuItem[];
   cy: cytoscape.Core;
 
 
   constructor(private graphService:GraphService, private sparqlService:SparqlService){}
-  
- 
-
 
   ngAfterViewInit() {
-  
+
+    // commented because it causes error : ExpressionChangedAfterItHasBeenCheckedError
+    //this.menuTrigger.openMenu();
     const endpoint = 'https://semantics.istc.cnr.it/hacid/sparql';
     const query = `
     PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
@@ -68,6 +77,8 @@ export class CytoscapeGraphComponent {
     
     `;
 
+    
+
     this.sparqlService.querySparqlEndpoint(endpoint, query)
       .subscribe({
         next: (data) => this.initCharts( this.convertDataToCytoscapeFormat(data)),
@@ -75,12 +86,17 @@ export class CytoscapeGraphComponent {
       });   
   }
  
+  selectOption(option: string) {
+    this.optionSelected.emit(option);
+    this.isVisible = false; // Hide the menu after selection
+  }
 
   protected initCharts(elements: cytoscape.ElementDefinition[]) {
     console.log("Initializing charts....."+elements+"   ");
     cytoscape.use(elk);
 
-  var elkoptions = {
+
+    var elkoptions = {
     name:'elk',
     nodeDimensionsIncludeLabels: false, // Boolean which changes whether label dimensions are included when calculating node dimensions
     fit: true, // Whether to fit
@@ -112,7 +128,8 @@ export class CytoscapeGraphComponent {
     priority: function( edge ){ return null; }, // Edges with a non-nil value are skipped when geedy edge cycle breaking is enabled
   };
 
-   this.cy = cytoscape({
+  //******* Initialize cytoscape *******
+  this.cy = cytoscape({
       container: this.cytoElem.nativeElement,
       elements:elements,
       style: [ // the stylesheet for the graph
@@ -145,39 +162,34 @@ export class CytoscapeGraphComponent {
       wheelSensitivity:0.2
     });
 
-
-
-    this.cy.on('tap','node', this.onNodeSelected1);
+    this.cy.on('tap','node', this.onNodeSelected1.bind(this));
     this.cy.on('mouseover', this.onMouseOver);
     this.cy.on('mouseout', this.onMouseOut);
-/*
-    var area=LX.init();
-    area.addPanel();
-    area.addMenubar( m => {
-     m.add( "Scene/Open Scene" );
-     m.add( "Scene/New Scene", () => { console.log("New scene created!") } );
-     m.add( "Scene/" ); // This is a separator!
-     m.add( "Scene/Open Recent/hello.scene");
-     m.add( "Scene/Open Recent/goodbye.scene" );
-     m.add( "Project/Export/DAE", { short: "E" } );
-     m.add( "Project/Export/GLTF" );
-     m.add( "View/Show grid", { type: "checkbox", checked: true, 
-     callback: (v) => { 
-         console.log("Show grid:", v);
-     }});
-     m.add( "Help/About" );
-     m.add( "Help/Support", { callback: () => { 
-         console.log("Support!") }, icon: "fa-solid fa-heart" } );
-    });
-*/
+
+ 
 
   }
+
+  ngOnInit():void{ 
+     this.items =[
+      {label:'one',icon:''},
+      {label:'two',icon:''},
+      {label:'three',icon:''},
+      {label:'four',icon:''}
+     ]
+
+   }
 
   onNodeSelected1(evt)
   {
     var node=evt.target;
-  }
 
+    this.isVisible = true;
+    console.log('node position x '+node.renderedPosition('x'));
+    console.log('node position y '+node.position.y);
+    this.menuLeft = node.renderedPosition('x')+'px';    
+    this.menuTop = node.renderedPosition('y')+'px';  
+  }
 
   onMouseOver(evt)
   {
@@ -188,7 +200,7 @@ export class CytoscapeGraphComponent {
   onMouseOut(evt)
   {
     var node=evt.target;
-    console.log("mouseout");
+    //console.log("mouseout");
     node.data('label',node.data('shortlabel') )
   }
 

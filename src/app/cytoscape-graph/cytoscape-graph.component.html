@@ -1,4 +1,14 @@
 <div class="topology-container">
+
+    
+
+    <div *ngIf="isVisible" #matMenu id="matMenu"  [ngStyle]="{'left':menuLeft, 'top':menuTop}" >
+      <button (click)="selectOption('Option 1')">Item 1</button>
+      <button (click)="selectOption('Option 2')">Item 2</button>
+    </div>
+
+    <p-contextMenu [target]="cy" [model]="items"></p-contextMenu>
+
     <div id="cy" #cy></div>
-    <div id="zim"></div>
+  
 </div>

@@ -1,3 +1,4 @@
+
 <div class="topology-container">
 
     
@@ -10,8 +11,9 @@
 
   <!--  <p-contextMenu [target]="cy" [model]="items"  " ></p-contextMenu>   -->
   <!--   <p-menu  #matMenu id="matMenu" *ngIf="isVisible"  [model]="items"  [ngStyle]="{'left':menuLeft, 'top':menuTop}" ></p-menu>-->
+  <p-autoComplete [(ngModel)]="selectedItem" field="name" [suggestions]="suggestions" (completeMethod)="search($event)" [minLength]="3" [style]="{'position':'fixed','z-index':'1000','top':'10px'}"></p-autoComplete>
 
-  <div #matMenu id="matMenu" *ngIf="isVisible"   [style]="{'padding':'0'}"      [ngStyle]="{'left':menuLeft, 'top':menuTop, 'background-color':'transparent', 'text-align':'center'}">
+  <div #matMenu id="matMenu" *ngIf="isVisible"   [style]="{'padding':'0'}"      [ngStyle]="{'left':menuLeft, 'top':menuTop, 'background-color':'transparent', 'text-align':'center','width':'300px'}">
   <p-listbox   [options]="outconnections" [(ngModel)]="selectedConn" [multiple]="true" [checkbox]="true" optionLabel="name" [listStyle]="{'max-height': menuHeight}"></p-listbox>
   <p-button label="Expand" [style]="{'width':'100%'}" (onClick)="onExpand()"></p-button> 
   </div>

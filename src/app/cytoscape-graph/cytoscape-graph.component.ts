@@ -10,6 +10,7 @@ import { ListboxModule} from 'primeng/listbox';
 import { FormsModule } from '@angular/forms';
 import { PanelModule } from 'primeng/panel';
 import { ButtonModule } from 'primeng/button';
+import { AutoCompleteModule } from 'primeng/autocomplete';
 
 
 import cytoscape, { BaseLayoutOptions } from 'cytoscape';
@@ -40,7 +41,8 @@ interface SparqlResponse {
   standalone: true,
   imports:[
     HttpClientModule, CommonModule, ContextMenuModule,
-    MenuModule, ListboxModule, FormsModule, ButtonModule, PanelModule
+    MenuModule, ListboxModule, FormsModule, ButtonModule, PanelModule,
+    AutoCompleteModule
   ],
   templateUrl: './cytoscape-graph.component.html',
   styleUrl: './cytoscape-graph.component.css'
@@ -59,12 +61,16 @@ export class CytoscapeGraphComponent {
   cy: cytoscape.Core;
   selectedConn:any[] =[];
   outconnections:any[]=[
-    { name:'conn 1'},
-    { name:'conn 2'},
-    { name:'conn 3'},
-    { name:'conn 4'},
+    { name:'findingSite'},
+    { name:'associatedMorphology'},
+    { name:'dueTo'},
+    { name:'clinicalCourse'},
   ];
 
+  suggestions:any[] =[];
+  selectedItem:string = '';
+
+  endpoint = 'https://semantics.istc.cnr.it/hacid/sparql';
 
   constructor(private graphService:GraphService, private sparqlService:SparqlService){}
 
@@ -72,7 +78,7 @@ export class CytoscapeGraphComponent {
 
     // commented because it causes error : ExpressionChangedAfterItHasBeenCheckedError
     //this.menuTrigger.openMenu();
-    const endpoint = 'https://semantics.istc.cnr.it/hacid/sparql';
+   // const endpoint = 'https://semantics.istc.cnr.it/hacid/sparql';
     const query = `
     PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
     PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -98,7 +104,7 @@ export class CytoscapeGraphComponent {
 
     
 
-    this.sparqlService.querySparqlEndpoint(endpoint, query)
+    this.sparqlService.querySparqlEndpoint(this.endpoint, query)
       .subscribe({
         next: (data) => this.initCharts( this.convertDataToCytoscapeFormat(data)),
         error: (error)=> console.error('There was an error!', error)
@@ -109,6 +115,57 @@ export class CytoscapeGraphComponent {
   selectOption(option: string) {
     this.optionSelected.emit(option);
     this.isVisible = false; // Hide the menu after selection
+  }
+
+  search(event)
+  {
+    const query = `
+    PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+    
+    SELECT distinct ?siteLabel WHERE {
+      ?disorder a  <https://w3id.org/hacid/onto/mdx/Disorder> .
+      ?disorder rdfs:label ?siteLabel .
+      FILTER(STRSTARTS(?siteLabel, "`+event.query+`"))
+      FILTER(lang(?siteLabel) = "en-gb")
+    }    
+    `;
+
+    this.sparqlService.querySparqlEndpoint(this.endpoint, query)
+      .subscribe({
+        next: (data) => this.searchResults(data),
+        error: (error)=> console.error('There was an error!', error)
+      });   
+
+      /*
+    let suggestions:any[]=[]
+    console.log("searching:"+event.query);
+    suggestions.push({"name":"uno"});
+    suggestions.push({"name":"due"});
+    suggestions.push({"name":"tre"});
+    suggestions.push({"name":"quattro"});
+
+    this.suggestions = suggestions;
+    */
+  }
+
+
+  searchResults(Results:SparqlResponse){
+    let suggestions:any[]=[]
+    var sparqlResults = Results.results.bindings;
+    sparqlResults.forEach(result => {
+      // Add nodes for subject and object
+      var value:string = result['siteLabel']['value'];
+      suggestions.push({ "name": value});
+
+      
+      
+      } );
+
+    this.suggestions = suggestions;
+
+
+
   }
 
   protected initCharts(elements: cytoscape.ElementDefinition[]) {
@@ -210,17 +267,18 @@ export class CytoscapeGraphComponent {
 
     if(node!== this.cy)
     {
+      /*
       var n=5
       this.outconnections= [];
       for(var i=0; i<n; i++)
         this.outconnections.push({name:'conn '+i, icon:''});
-
+*/
       this.isVisible = true;
       console.log('node position x '+node.renderedPosition('x'));
       console.log('node position y '+node.position.y);
       this.menuLeft = node.renderedPosition('x')+'px';    
       this.menuTop = node.renderedPosition('y')+'px';
-      this.menuHeight = 24+ 46*n+'px';
+      this.menuHeight = 24+ 46*4+'px';
     }
 
   }

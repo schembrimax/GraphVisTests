@@ -11,9 +11,10 @@
   <!--  <p-contextMenu [target]="cy" [model]="items"  " ></p-contextMenu>   -->
   <!--   <p-menu  #matMenu id="matMenu" *ngIf="isVisible"  [model]="items"  [ngStyle]="{'left':menuLeft, 'top':menuTop}" ></p-menu>-->
 
-  <p-panel #matMenu id="matMenu" *ngIf="isVisible" header="header"  [style]="{'padding':'0'}"      [ngStyle]="{'left':menuLeft, 'top':menuTop}">
-  <p-listbox   [options]="outconnections" [(ngModel)]="selectedConn" [multiple]="true" [checkbox]="true" optionLabel="name" [listStyle]="{'padding': 0}"></p-listbox>
-  </p-panel>
+  <div #matMenu id="matMenu" *ngIf="isVisible"   [style]="{'padding':'0'}"      [ngStyle]="{'left':menuLeft, 'top':menuTop, 'background-color':'transparent', 'text-align':'center'}">
+  <p-listbox   [options]="outconnections" [(ngModel)]="selectedConn" [multiple]="true" [checkbox]="true" optionLabel="name" [listStyle]="{'max-height': menuHeight}"></p-listbox>
+  <p-button label="Expand" [style]="{'width':'100%'}" (onClick)="onExpand()"></p-button> 
+  </div>
 
     <div id="cy" #cy></div>
   

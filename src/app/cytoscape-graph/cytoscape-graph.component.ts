@@ -53,6 +53,8 @@ export class CytoscapeGraphComponent {
   isVisible:boolean=false;
   menuLeft:string;
   menuTop:string;
+  menuHeight:string;
+
   items:MenuItem[];
   cy: cytoscape.Core;
   selectedConn:any[] =[];
@@ -208,13 +210,24 @@ export class CytoscapeGraphComponent {
 
     if(node!== this.cy)
     {
+      var n=5
+      this.outconnections= [];
+      for(var i=0; i<n; i++)
+        this.outconnections.push({name:'conn '+i, icon:''});
+
       this.isVisible = true;
       console.log('node position x '+node.renderedPosition('x'));
       console.log('node position y '+node.position.y);
       this.menuLeft = node.renderedPosition('x')+'px';    
       this.menuTop = node.renderedPosition('y')+'px';
+      this.menuHeight = 24+ 46*n+'px';
     }
 
+  }
+
+  onExpand()
+  {
+    console.log(" Expand");
   }
 
   onMouseOver(evt)

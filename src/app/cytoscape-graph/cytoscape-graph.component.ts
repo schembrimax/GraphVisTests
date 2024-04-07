@@ -4,13 +4,18 @@ import { combineLatest } from 'rxjs';
 import { GraphService } from './graph.service';
 import { SparqlService } from '../sparql-service.service';
 import { HttpClientModule } from '@angular/common/http';
-import { ContextMenuModule } from 'primeng/contextmenu'
+import { ContextMenuModule } from 'primeng/contextmenu';
+import { MenuModule } from 'primeng/menu';
+import { ListboxModule} from 'primeng/listbox';
+import { FormsModule } from '@angular/forms';
+import { PanelModule } from 'primeng/panel';
+import { ButtonModule } from 'primeng/button';
+
 
 import cytoscape, { BaseLayoutOptions } from 'cytoscape';
 import cola from 'cytoscape-cola';
 import elk from 'cytoscape-elk';
 import { MenuItem } from 'primeng/api';
-
 
 interface SparqlResponse {
   head: {
@@ -28,10 +33,15 @@ interface SparqlResponse {
   };
 }
 
+
+
 @Component({
   selector: 'app-cytoscape-graph',
   standalone: true,
-  imports:[HttpClientModule, CommonModule, ContextMenuModule],
+  imports:[
+    HttpClientModule, CommonModule, ContextMenuModule,
+    MenuModule, ListboxModule, FormsModule, ButtonModule, PanelModule
+  ],
   templateUrl: './cytoscape-graph.component.html',
   styleUrl: './cytoscape-graph.component.css'
 })
@@ -45,6 +55,13 @@ export class CytoscapeGraphComponent {
   menuTop:string;
   items:MenuItem[];
   cy: cytoscape.Core;
+  selectedConn:any[] =[];
+  outconnections:any[]=[
+    { name:'conn 1'},
+    { name:'conn 2'},
+    { name:'conn 3'},
+    { name:'conn 4'},
+  ];
 
 
   constructor(private graphService:GraphService, private sparqlService:SparqlService){}
@@ -85,6 +102,7 @@ export class CytoscapeGraphComponent {
         error: (error)=> console.error('There was an error!', error)
       });   
   }
+ 
  
   selectOption(option: string) {
     this.optionSelected.emit(option);
@@ -165,9 +183,7 @@ export class CytoscapeGraphComponent {
     this.cy.on('tap','node', this.onNodeSelected1.bind(this));
     this.cy.on('mouseover', this.onMouseOver);
     this.cy.on('mouseout', this.onMouseOut);
-
- 
-
+    this.cy.on('tap', this.onTappingGeneral.bind(this))
   }
 
   ngOnInit():void{ 
@@ -180,15 +196,25 @@ export class CytoscapeGraphComponent {
 
    }
 
+  onTappingGeneral(evt)
+  {
+    if(evt.target==this.cy)
+      this.isVisible=false;
+  }
+
   onNodeSelected1(evt)
   {
     var node=evt.target;
 
-    this.isVisible = true;
-    console.log('node position x '+node.renderedPosition('x'));
-    console.log('node position y '+node.position.y);
-    this.menuLeft = node.renderedPosition('x')+'px';    
-    this.menuTop = node.renderedPosition('y')+'px';  
+    if(node!== this.cy)
+    {
+      this.isVisible = true;
+      console.log('node position x '+node.renderedPosition('x'));
+      console.log('node position y '+node.position.y);
+      this.menuLeft = node.renderedPosition('x')+'px';    
+      this.menuTop = node.renderedPosition('y')+'px';
+    }
+
   }
 
   onMouseOver(evt)

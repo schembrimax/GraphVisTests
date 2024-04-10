@@ -1,4 +1,11 @@
 /* You can add global styles to this file, and also import other style files */
+@import "primeicons/primeicons.css";
 
 html, body { height: 100%; }
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+
+.p-speeddial-button.p-button.p-button-icon-only {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+

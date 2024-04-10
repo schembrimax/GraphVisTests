@@ -9,23 +9,29 @@
     height: 100%;
   }
   
-  .topology-container {
+.topology-container {
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100vh;
   }
 
-#matMenu{
+#expandMenu{
   position: fixed;
   z-index: 1000;
   width: 200px;
   background-color: #f1f1f1; 
 }
 
-#matMenu li{
+#expandMenu li{
   display: block;
   color: #000;
   padding: 8px 16px;
   text-decoration: none;
+}
+
+#nodeMenu{
+  position: fixed;
+  z-index: 1000;
+  width: 200px;
 }

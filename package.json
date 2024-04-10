@@ -30,6 +30,7 @@
     "cytoscape-popper": "^4.0.0",
     "floating-ui": "^5.2.8",
     "lexgui": "^0.1.30",
+    "primeicons": "^7.0.0",
     "primeng": "^17.12.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",

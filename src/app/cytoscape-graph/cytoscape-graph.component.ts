@@ -201,7 +201,8 @@ export class CytoscapeGraphComponent
                 'text-valign':'top',
                 'text-margin-y':-8,
             }
-        }
+        },
+
       ],
 
       layout: this.elkoptions , 
@@ -210,6 +211,7 @@ export class CytoscapeGraphComponent
 
 
     this.cy.on('tap','node', this.onNodeSelected1.bind(this));
+    this.cy.on('cxttap', 'node', this.onRightMouseClick.bind(this));
     this.cy.on('mouseover', this.onMouseOver.bind(this));
     this.cy.on('mouseout', this.onMouseOut.bind(this));
     this.cy.on('tap', this.onTappingGeneral.bind(this));
@@ -519,8 +521,11 @@ export class CytoscapeGraphComponent
     var sparqlResults = Results.results.bindings;
     sparqlResults.forEach(result => {
       // Add nodes for subject and object
-       this.cy.add({data:{id:result['obj']['value'],label:result['objLabel']['value']}});
-       this.cy.add({data:{id:this.cy.$(':selected').data('id')+result['pred']['value']+ result['obj']['value'],
+      if(this.cy.getElementById(result['obj']['value']).length==0)
+         this.cy.add({data:{id:result['obj']['value'],label:result['objLabel']['value']}});
+      
+      if(this.cy.getElementById(this.cy.$(':selected').data('id')+result['pred']['value']+ result['obj']['value']).length==0)
+        this.cy.add({data:{id:this.cy.$(':selected').data('id')+result['pred']['value']+ result['obj']['value'],
             source:this.cy.$(':selected').data('id'),
             target:result['obj']['value'],
             label:result['predLabel']['value']
@@ -528,6 +533,13 @@ export class CytoscapeGraphComponent
     } );
 
     this.cy.layout(this.elkoptions).run();
+  }
+
+  //----------------------------------------------------------------------------------------------------
+  onRightMouseClick(evt)
+  {
+    console.log("right click")
+    evt.target.style('background-color','#ec3');
   }
 
   //----------------------------------------------------------------------------------------------------

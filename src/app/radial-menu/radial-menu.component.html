@@ -1,0 +1,6 @@
+<div class="menu" (pointerenter)="pointerover()" (pointerleave)="pointerleave()">
+<div [@menuAnimation]="menuState" class="itemscontainer" >    
+    <button [@elementAnimation]  *ngFor="let item of items; let i=index" class="menu-item" (click)="toggleMenu()"  [style]="calculateRadialPosition(i)" >{{ item.name }}</button>
+ 
+</div>
+</div>

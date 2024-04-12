@@ -1,7 +1,6 @@
 import { Component, ViewChild, ElementRef, OnDestroy, AfterContentInit, Inject, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { combineLatest } from 'rxjs';
-import { GraphService } from './graph.service';
 import { SparqlService } from '../sparql-service.service';
 import { HttpClientModule } from '@angular/common/http';
 import { PrimeNGConfig } from 'primeng/api';
@@ -13,6 +12,8 @@ import { PanelModule } from 'primeng/panel';
 import { ButtonModule } from 'primeng/button';
 import { AutoCompleteModule } from 'primeng/autocomplete';
 import { SpeedDialModule } from 'primeng/speeddial';
+import { RadialMenuComponent } from '../radial-menu/radial-menu.component';
+
 
 
 import cytoscape, { BaseLayoutOptions } from 'cytoscape';
@@ -43,7 +44,7 @@ interface SparqlResponse {
   imports:[
     HttpClientModule, CommonModule, ContextMenuModule,
     MenuModule, ListboxModule, FormsModule, ButtonModule, PanelModule,
-    AutoCompleteModule, SpeedDialModule
+    AutoCompleteModule, SpeedDialModule, RadialMenuComponent
   ],
   templateUrl: './cytoscape-graph.component.html',
   styleUrl: './cytoscape-graph.component.css'
@@ -52,9 +53,10 @@ interface SparqlResponse {
 export class CytoscapeGraphComponent
 {
   @ViewChild('cy') cytoElem: ElementRef;
-  @ViewChild('expandMenu') matMenu: ElementRef;
-  @ViewChild('speedMenu') nodeMenu: ElementRef;
+  @ViewChild('expandMenu') contextMenu: ElementRef;
+  @ViewChild('speedMenu') speedMenu: ElementRef;
   @Output() optionSelected= new EventEmitter<string>();
+
 
   // context menu
   isContextMenuVisible:boolean=false;
@@ -69,7 +71,7 @@ export class CytoscapeGraphComponent
   outconnections:any[]=[];
 
   // used for the node menu
-  isNodeMenuVisible:boolean = false;
+  isNodeMenuVisible:boolean = true;
   nodeMenuLeft:string = '40px';
   nodeMenuTop:string = '40px';
   nodeMenuItems:any[]=[  
@@ -146,12 +148,18 @@ export class CytoscapeGraphComponent
         error: (error)=> console.error('There was an error!', error)
       });   
     */
-    this.initCharts([]);  
+    this.initCharts([]);
+    console.log(" Speed dial "+ this.speedMenu);
   }
   //----------------------------------------------------------------------------------------------------
   ngOnInit():void
   {
-    
+   
+  }
+
+  primeMouseEnter()
+  {
+    console.log(" MOUSE enter ");
   }
  
   //----------------------------------------------------------------------------------------------------
@@ -546,19 +554,18 @@ export class CytoscapeGraphComponent
   onMouseOver(evt)
   {
     var node=evt.target;
-    console.log(" outside ");
+      
     
-    /*
     if(  node.data && 'id' in node.data())
     {
       console.log(" inside ");
-      node.data('label',node.data('longlabel') )
+     // node.data('label',node.data('longlabel') )
      // this.nodeMenuLeft = node.renderedPosition('x')-10+'px';    
       //this.nodeMenuTop = node.renderedPosition('y')+-10+'px';
-      this.isNodeMenuVisible=true;
-      this.nodeMenu.nativeElement.click();
+     // this.isNodeMenuVisible=true;
+      this.speedMenu.nativeElement.toggle();
     }
-    */
+  
   }
 
   //----------------------------------------------------------------------------------------------------

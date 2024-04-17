@@ -15,7 +15,6 @@ import { SpeedDialModule } from 'primeng/speeddial';
 import { RadialMenuComponent } from '../radial-menu/radial-menu.component';
 
 
-
 import cytoscape, { BaseLayoutOptions } from 'cytoscape';
 import cola from 'cytoscape-cola';
 import elk from 'cytoscape-elk';
@@ -53,7 +52,7 @@ interface SparqlResponse {
 export class CytoscapeGraphComponent
 {
   @ViewChild('cy') cytoElem: ElementRef;
-  @ViewChild('expandMenu') contextMenu: ElementRef;
+  @ViewChild('contextMenu') contextMenu: ElementRef;
   @ViewChild('speedMenu') speedMenu: ElementRef;
   @Output() optionSelected= new EventEmitter<string>();
 
@@ -65,6 +64,8 @@ export class CytoscapeGraphComponent
   menuHeight:string;
 
   cy: cytoscape.Core;
+
+  radialVisible:boolean = false;
 
   // used for the node contextual menu showing expandable relations
   selectedConn:any[] =[];
@@ -195,7 +196,7 @@ export class CytoscapeGraphComponent
         {
             selector: 'edge',
             style: {
-                'width': 3,
+                'width': 3.5,
                 'line-color': '#555',
                 'target-arrow-color': '#555',
                 'target-arrow-shape': 'triangle',
@@ -440,42 +441,21 @@ export class CytoscapeGraphComponent
   }
 
   //----------------------------------------------------------------------------------------------------
-  onNarrower()
-  {
-    var query = `
-    PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-    
-    SELECT distinct ?obj ?objLabel
-    WHERE {
-      ?obj <https://w3id.org/hacid/onto/mdx/broader>  <`+this.cy.$(':selected').data('id')+`> .
-      ?obj rdfs:label ?objLabel .
-      FILTER(lang(?objLabel) = "en-gb" || lang(?objLabel)="en" ) .
-    }`;
-    this.sparqlService.querySparqlEndpoint(this.endpoint, query )
-      .subscribe({
-        next: (data) => this.onNarrowerResult(data),
-        error: (error)=> console.error('There was an error!', error)
-      });
-      this.isContextMenuVisible = false;
-  }
-
-  //----------------------------------------------------------------------------------------------------
-  onBroaderResult(Results:SparqlResponse)
+  onNodeExpanded(Results:SparqlResponse)
   {
     var sparqlResults = Results.results.bindings;
     sparqlResults.forEach(result => {
       // Add nodes for subject and object
-      // Add node if it doesn't alrady exist
-      if( this.cy.getElementById(result['obj']['value']).length==0)
-        this.cy.add({data:{id:result['obj']['value'],label:result['objLabel']['value']}});
-
-      if( this.cy.getElementById(this.cy.$(':selected').data('id')+'broader'+ result['obj']['value']).length==0)
-      this.cy.add({data:{id:this.cy.$(':selected').data('id')+'broader'+ result['obj']['value'],
+      if(this.cy.getElementById(result['obj']['value']).length==0)
+         this.cy.add({data:{id:result['obj']['value'],label:result['objLabel']['value']}})
+        .style({'shape':'barrel', 'background-color':'#aac'});
+      
+      if(this.cy.getElementById(this.cy.$(':selected').data('id')+result['pred']['value']+ result['obj']['value']).length==0)
+        this.cy.add({data:{id:this.cy.$(':selected').data('id')+result['pred']['value']+ result['obj']['value'],
             source:this.cy.$(':selected').data('id'),
             target:result['obj']['value'],
-            label:'broader'
-            }});
+            label:result['predLabel']['value']
+            }}).style({'width':'1'});
     } );
 
     this.cy.layout(this.elkoptions).run();
@@ -504,6 +484,48 @@ export class CytoscapeGraphComponent
   }
 
   //----------------------------------------------------------------------------------------------------
+  onBroaderResult(Results:SparqlResponse)
+  {
+    var sparqlResults = Results.results.bindings;
+    sparqlResults.forEach(result => {
+      // Add nodes for subject and object
+      // Add node if it doesn't alrady exist
+      if( this.cy.getElementById(result['obj']['value']).length==0)
+        this.cy.add({data:{id:result['obj']['value'],label:result['objLabel']['value']}});
+
+      if( this.cy.getElementById(this.cy.$(':selected').data('id')+'broader'+ result['obj']['value']).length==0)
+      this.cy.add({data:{id:this.cy.$(':selected').data('id')+'broader'+ result['obj']['value'],
+            source:this.cy.$(':selected').data('id'),
+            target:result['obj']['value'],
+            label:'broader'
+            }});
+    } );
+
+    this.cy.layout(this.elkoptions).run();
+  }
+
+  //----------------------------------------------------------------------------------------------------
+  onNarrower()
+  {
+    var query = `
+    PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+    
+    SELECT distinct ?obj ?objLabel
+    WHERE {
+      ?obj <https://w3id.org/hacid/onto/mdx/broader>  <`+this.cy.$(':selected').data('id')+`> .
+      ?obj rdfs:label ?objLabel .
+      FILTER(lang(?objLabel) = "en-gb" || lang(?objLabel)="en" ) .
+    }`;
+    this.sparqlService.querySparqlEndpoint(this.endpoint, query )
+      .subscribe({
+        next: (data) => this.onNarrowerResult(data),
+        error: (error)=> console.error('There was an error!', error)
+      });
+      this.isContextMenuVisible = false;
+  }
+
+  //----------------------------------------------------------------------------------------------------
   onNarrowerResult(Results:SparqlResponse)
   {
     var sparqlResults = Results.results.bindings;
@@ -523,25 +545,7 @@ export class CytoscapeGraphComponent
     this.cy.layout(this.elkoptions).run();
   }
 
-  //----------------------------------------------------------------------------------------------------
-  onNodeExpanded(Results:SparqlResponse)
-  {
-    var sparqlResults = Results.results.bindings;
-    sparqlResults.forEach(result => {
-      // Add nodes for subject and object
-      if(this.cy.getElementById(result['obj']['value']).length==0)
-         this.cy.add({data:{id:result['obj']['value'],label:result['objLabel']['value']}});
-      
-      if(this.cy.getElementById(this.cy.$(':selected').data('id')+result['pred']['value']+ result['obj']['value']).length==0)
-        this.cy.add({data:{id:this.cy.$(':selected').data('id')+result['pred']['value']+ result['obj']['value'],
-            source:this.cy.$(':selected').data('id'),
-            target:result['obj']['value'],
-            label:result['predLabel']['value']
-            }});
-    } );
 
-    this.cy.layout(this.elkoptions).run();
-  }
 
   //----------------------------------------------------------------------------------------------------
   onRightMouseClick(evt)
@@ -555,7 +559,7 @@ export class CytoscapeGraphComponent
   {
     var node=evt.target;
       
-    
+    /*
     if(  node.data && 'id' in node.data())
     {
       console.log(" inside ");
@@ -565,7 +569,7 @@ export class CytoscapeGraphComponent
      // this.isNodeMenuVisible=true;
       this.speedMenu.nativeElement.toggle();
     }
-  
+  */
   }
 
   //----------------------------------------------------------------------------------------------------

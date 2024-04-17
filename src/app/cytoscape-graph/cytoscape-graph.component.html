@@ -19,8 +19,9 @@
       <label for="float-label">Search disorders...</label>
   </span>
 
-  <app-radial-menu></app-radial-menu>
+  <app-radial-menu *ngIf="radialVisible"></app-radial-menu>
 
+  <!--
   <div #nodeMenu id="nodeMenu"
         
         [style]="{'padding':'0'}"
@@ -31,8 +32,9 @@
             [rotateAnimation]="false">
         </p-speedDial>
   </div>
+-->
 
-  <div #expandMenu id="expandMenu" 
+  <div #contextMenu id="contextMenu" 
         *ngIf="isContextMenuVisible"
         [style]="{'padding':'0'}"
         [ngStyle]="{'left':menuLeft, 'top':menuTop, 'background-color':'transparent', 'text-align':'center','width':'300px'}">

@@ -52,7 +52,7 @@ export class RadialMenuComponent implements OnInit{
   constructor() { }
 
   calculateRadialPosition(index: number) {
-    const radius = 70; // Adjust this according to your needs
+    const radius = 50; // Adjust this according to your needs
     const centerX = -20; // Adjust this according to your needs
     const centerY = -20; // Adjust this according to your needs
     const totalItems = this.items.length;

@@ -273,7 +273,7 @@ export class CytoscapeGraphComponent
       descrItems.push({ "name": value, "uri":result['pred']['value']});
     } );
 
-    this.cy.add({data:{id: disorder['uri'],label:disorder['name'], descriptionItems:descrItems }});
+    this.cy.add({data:{id: disorder['uri'],label:disorder['name'], descriptionItems:descrItems, tagged:false }});
     this.cy.center();
     this.cy.zoom(2);
     var layout = this.cy.layout({
@@ -447,7 +447,7 @@ export class CytoscapeGraphComponent
     sparqlResults.forEach(result => {
       // Add nodes for subject and object
       if(this.cy.getElementById(result['obj']['value']).length==0)
-         this.cy.add({data:{id:result['obj']['value'],label:result['objLabel']['value']}})
+         this.cy.add({data:{id:result['obj']['value'],label:result['objLabel']['value'], tagged:false}})
         .style({'shape':'barrel', 'background-color':'#aac'});
       
       if(this.cy.getElementById(this.cy.$(':selected').data('id')+result['pred']['value']+ result['obj']['value']).length==0)
@@ -491,7 +491,7 @@ export class CytoscapeGraphComponent
       // Add nodes for subject and object
       // Add node if it doesn't alrady exist
       if( this.cy.getElementById(result['obj']['value']).length==0)
-        this.cy.add({data:{id:result['obj']['value'],label:result['objLabel']['value']}});
+        this.cy.add({data:{id:result['obj']['value'],label:result['objLabel']['value'], tagged:false}});
 
       if( this.cy.getElementById(this.cy.$(':selected').data('id')+'broader'+ result['obj']['value']).length==0)
       this.cy.add({data:{id:this.cy.$(':selected').data('id')+'broader'+ result['obj']['value'],
@@ -532,7 +532,7 @@ export class CytoscapeGraphComponent
     sparqlResults.forEach(result => {
        // Add node if it doesn't alrady exist
        if( this.cy.getElementById(result['obj']['value']).length==0)
-        this.cy.add({data:{id:result['obj']['value'],label:result['objLabel']['value']}});
+        this.cy.add({data:{id:result['obj']['value'],label:result['objLabel']['value'], tagged:false}});
 
        if( this.cy.getElementById(result['obj']['value']+'broader'+ this.cy.$(':selected').data('id')).length==0)
         this.cy.add({data:{id: result['obj']['value']+'broader'+ this.cy.$(':selected').data('id'),
@@ -550,8 +550,13 @@ export class CytoscapeGraphComponent
   //----------------------------------------------------------------------------------------------------
   onRightMouseClick(evt)
   {
+
     console.log("right click")
-    evt.target.style('background-color','#ec3');
+    if(!evt.target.data('tagged'))
+      evt.target.style({'outline-width':'4','outline-offset':'8','outline-color':'#c08'});
+    else
+      evt.target.style({'outline-width':'0','outline-offset':'4','outline-color':'#0cc'});
+    evt.target.data('tagged', !evt.target.data('tagged'));
   }
 
   //----------------------------------------------------------------------------------------------------

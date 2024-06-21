@@ -2,22 +2,46 @@
 
   <img src="assets/HACID_Logo_inverted.svg" style="position: absolute; height: 60px; left: 20px; top: 20px; z-index: 1000;">
 
-  <span class="p-float-label" [ngStyle]="{'position':'fixed','z-index':'1000','top':'40px','left':'30%','width':'30%'}">
-    <p-autoComplete
+  <div [ngStyle]="{'position':'fixed','z-index':'1000','top':'40px','left':'30%','width':'30%'}">
+  <span class="p-float-label" >
+  
+    <p-autoComplete #autocomplete
         inputId="float-label"
         field="name"
+        [(ngModel)]="autoCompleteTexts"
         [suggestions]="suggestions" 
-        [minLength]="3" 
-        [style]="{'width':'100%'}"
-        [inputStyle]="{'width':'100%'}"
+        [minLength]="2" 
+        [style]="{'width':'100%','display':'inline-block'}"
+        [inputStyle]="{'width':'100%','display':'inline-block'}"
         [showClear]="true"
         (completeMethod)="search($event)"
-        (onSelect)="onSelectDisorder($event)">
+        [multiple]="true"
+        (blur)="onBlur($event.target)"
+        (onFocus)="onFocus"
+        (onKeyUp)="onKeyUp($event)"
+        (onSelect)="onSelectClass($event)"
+        (onUnselect)="onUnselect($event)"
+    >
+
       
     </p-autoComplete>
-    
-      <label for="float-label">Search disorders...</label>
+    <label for="float-label">Search {{selectValue}}...</label>
+
   </span>
+
+    <p-selectButton [ngStyle]="{'text-align':'center','padding':'10px'}"
+        [options]="stateOptions"
+        [(ngModel)]="selectValue"
+        [multiple]="false"
+        optionLabel="name"
+        optionValue="value"
+        [allowEmpty]="false" 
+        label="Model (Default)"
+        (onOptionClick)="buttonSelectClick()"
+    />
+
+
+  </div>
 
   <app-radial-menu *ngIf="radialVisible"></app-radial-menu>
 
@@ -39,11 +63,13 @@
         [style]="{'padding':'0'}"
         [ngStyle]="{'left':menuLeft, 'top':menuTop, 'background-color':'transparent', 'text-align':'center','width':'300px'}">
 
-
+<!--
         <div >
           <p-button label="Broader" [style]="{'width':'50%','display':'inline','background-color':'#29a'}" (onClick)="onBroader()"></p-button> 
           <p-button label="Narrower" [style]="{'width':'50%','display':'inline','background-color':'#29a'}" (onClick)="onNarrower()"></p-button>
         </div>
+      -->
+
     <p-listbox
           [options]="outconnections"
           [(ngModel)]="selectedConn"

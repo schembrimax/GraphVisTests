@@ -1,0 +1,37 @@
+#cy {
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 999;
+    width: 100%;
+    min-width: 500px;
+    height: 100%;
+  }
+  
+.topology-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
+
+#contextMenu{
+  position: fixed;
+  z-index: 1000;
+  width: 200px;
+  background-color: #f1f1f1; 
+}
+
+#contextMenu li{
+  display: block;
+  color: #000;
+  padding: 8px 16px;
+  text-decoration: none;
+}
+
+#nodeMenu{
+  position: fixed;
+  z-index: 1000;
+  width: 200px;
+}

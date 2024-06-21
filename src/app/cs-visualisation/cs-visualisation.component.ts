@@ -1,4 +1,4 @@
-import { Component, ViewChild, ElementRef, OnDestroy, AfterContentInit, Inject, EventEmitter, Input, Output } from '@angular/core';
+import { Component, ViewChild, ElementRef, OnDestroy, AfterContentInit, Inject, EventEmitter, Input, Output, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SparqlService } from '../sparql-service.service';
 import { HttpClientModule } from '@angular/common/http';
@@ -10,9 +10,11 @@ import { FormsModule } from '@angular/forms';
 import { PanelModule } from 'primeng/panel';
 import { ButtonModule } from 'primeng/button';
 import { AutoCompleteModule } from 'primeng/autocomplete';
+import { AutoComplete } from 'primeng/autocomplete';
 import { SpeedDialModule } from 'primeng/speeddial';
+import { SelectButtonModule} from 'primeng/selectbutton';
 import { RadialMenuComponent } from '../radial-menu/radial-menu.component';
-
+import { ChipsModule} from 'primeng/chips';
 
 import cytoscape, { BaseLayoutOptions } from 'cytoscape';
 import cola from 'cytoscape-cola';
@@ -35,26 +37,26 @@ interface SparqlResponse {
   };
 }
 
-
 @Component({
-  selector: 'app-cytoscape-graph',
+  selector: 'app-cs-visualisation',
   standalone: true,
-  imports:[
-    HttpClientModule, CommonModule, ContextMenuModule,
+  imports: [ HttpClientModule, CommonModule, ContextMenuModule,
     MenuModule, ListboxModule, FormsModule, ButtonModule, PanelModule,
-    AutoCompleteModule, SpeedDialModule, RadialMenuComponent
-  ],
-  templateUrl: './cytoscape-graph.component.html',
-  styleUrl: './cytoscape-graph.component.css'
+    AutoCompleteModule, SpeedDialModule, RadialMenuComponent, SelectButtonModule,
+    ChipsModule ],
+  templateUrl: './cs-visualisation.component.html',
+  styleUrl: './cs-visualisation.component.css'
 })
 
-export class CytoscapeGraphComponent
-{
+
+
+export class CSVisualisationComponent {
+
   @ViewChild('cy') cytoElem: ElementRef;
   @ViewChild('contextMenu') contextMenu: ElementRef;
   @ViewChild('speedMenu') speedMenu: ElementRef;
+  @ViewChild('autocomplete') autocomplete: AutoComplete;
   @Output() optionSelected= new EventEmitter<string>();
-
 
   // context menu
   isContextMenuVisible:boolean=false;
@@ -83,7 +85,11 @@ export class CytoscapeGraphComponent
   // used to store autocompelte suggestions
   suggestions:any[] =[];
   selectedItem:string = '';
+  autoCompleteTexts:any[]=[];
 
+  // used for select Button
+  stateOptions:any[] = [{"name":"Model", value:"Model"}, {"name":"Simulation", value:"Simulation"},{"name":"Dataset",value:"Dataset"}];
+  selectValue = "Model";
 
   elkoptions = {
     name:'elk',
@@ -114,55 +120,21 @@ export class CytoscapeGraphComponent
 
   }
 
-   //----------------------------------------------------------------------------------------------------
+  //----------------------------------------------------------------------------------------------------
+  ngOnInit():void
+  {
+
+  }
+
+  //----------------------------------------------------------------------------------------------------
   ngAfterViewInit()
   {
-    // const endpoint = 'https://semantics.istc.cnr.it/hacid/sparql';
-    const query = `
-    PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-    PREFIX ho: <https://w3id.org/hacid/onto/mdx/>
-    PREFIX hd: <https://w3id.org/hacid/mdx/data/>
-    
-    SELECT ?subject ?predicate ?object WHERE {
-    
-        ?s ?predicate ?o .
-        ?s ho:broader+ ?o.
-        
-        ?o rdf:type ho:BodyStructure .
-        ?s rdf:type ho:BodyStructure .
-       
-        ?s rdfs:label ?subject . 
-        ?o rdfs:label ?object .
-        
-        FILTER (lang(?subject) = 'en-gb')
-        FILTER (lang(?object) = 'en-gb')
-      } 
-    
-    `;
-
-    /*
-    this.sparqlService.querySparqlEndpoint(this.endpoint, query)
-      .subscribe({
-        next: (data) => this.initCharts( this.convertDataToCytoscapeFormat(data)),
-        error: (error)=> console.error('There was an error!', error)
-      });   
-    */
+    // override the default on enter behaviour that hides the dropdown
+    this.autocomplete.onEnterKey = (event:any)=>{ };
     this.initCharts([]);
     console.log(" Speed dial "+ this.speedMenu);
   }
 
-  //----------------------------------------------------------------------------------------------------
-  ngOnInit():void
-  {
-   
-  }
-
-  primeMouseEnter()
-  {
-    console.log(" MOUSE enter ");
-  }
- 
   //----------------------------------------------------------------------------------------------------
   protected initCharts(elements: cytoscape.ElementDefinition[]) {
     console.log("Initializing charts....."+elements+"   ");
@@ -219,22 +191,42 @@ export class CytoscapeGraphComponent
     });
 
 
-    this.cy.on('tap','node', this.onNodeSelected1.bind(this));
+    this.cy.on('tap','node', this.onNodeSelected1.bind(this));  // bind(this) is important because give the context to the callback function
     this.cy.on('cxttap', 'node', this.onRightMouseClick.bind(this));
     this.cy.on('mouseover', this.onMouseOver.bind(this));
     this.cy.on('mouseout', this.onMouseOut.bind(this));
     this.cy.on('tap', this.onTappingGeneral.bind(this));
     this.cy.maxZoom(2);
-
     /*
     this.cy.add({data:{id:"Disorder",label:"Disorder"}});
     this.cy.center();
     this.cy.zoom(1);
     //*/
   }
+
+  //----------------------------------------------------------------------------------------------------
+  primeMouseEnter()
+  {
+    console.log(" MOUSE enter ");
+  }
+
+  //----------------------------------------------------------------------------------------------------
+  buttonSelectClick(){
+    console.log("Button Selected Option "+this.selectValue);
+  }
+ 
+  onBlur(event:any)
+  {
+    console.log(" Blurred ///////////////");
+  }
+
+  onFocus()
+  {
+    console.log(" Focused");
+  }
   
   //----------------------------------------------------------------------------------------------------
-  onSelectDisorder(event)
+  onSelectClass(event)
   {
     //console.log(" Disorder: "+event.value['name']+'  uri:'+event.value['uri']);
 
@@ -245,8 +237,7 @@ export class CytoscapeGraphComponent
       
       SELECT distinct ?pred  ?predLabel  
       WHERE {
-        <`+ event.value['uri'] +`> <https://w3id.org/hacid/onto/mdx/isDescribedBy> ?description .
-        ?description ?pred ?obj .
+        <`+ event.value['uri'] +`> ?pred ?obj .
         ?pred rdfs:label ?predLabel .
         FILTER(lang(?predLabel) = "en-gb" || lang(?predLabel)="en" || lang(?predLabel)="en-us") .
         FILTER(?pred != rdf:type) .
@@ -255,26 +246,26 @@ export class CytoscapeGraphComponent
     
     this.sparqlService.querySparqlEndpoint(this.endpoint, query )
       .subscribe({
-        next: (data) => this.addDisorder(data, event.value),
+        next: (data) => this.addClass(data, event.value),
         error: (error)=> console.error('There was an error!', error)
       });
   }
 
   //----------------------------------------------------------------------------------------------------
-  addDisorder(Results:SparqlResponse, disorder:any)
+  addClass(Results:SparqlResponse, classInstance:any)
   {
-    console.log(" Disorder: "+disorder['name']+'  uri:'+disorder['uri']);
+    console.log(" Class: "+classInstance['name']+'  uri:'+classInstance['uri']);
 
-    let descrItems:any[]=[]
+    let relations:any[]=[]
     var sparqlResults = Results.results.bindings;
     sparqlResults.forEach(result => {
       // Add nodes for subject and object
       var value:string = result['predLabel']['value'];
       console.log(value);
-      descrItems.push({ "name": value, "uri":result['pred']['value']});
+      relations.push({ "name": value, "uri":result['pred']['value']});
     } );
 
-    this.cy.add({data:{id: disorder['uri'],label:disorder['name'], descriptionItems:descrItems, tagged:false }});
+    this.cy.add({data:{id: classInstance['uri'],label:classInstance['name'], relationItems:relations, tagged:false }});
     this.cy.center();
     this.cy.zoom(2);
     var layout = this.cy.layout({
@@ -351,20 +342,46 @@ export class CytoscapeGraphComponent
   }
 
   //----------------------------------------------------------------------------------------------------
+  onKeyUp(event: KeyboardEvent)
+  {
+
+    if (event.key == "Enter" )
+    {
+     let tokenInput = event.target as HTMLInputElement;
+
+     if (tokenInput.value) {
+      this.autoCompleteTexts.push({"name":tokenInput.value});
+      tokenInput.value = "";
+     }
+     console.log("hello");
+     this.autocomplete.show();
+    }
+
+  }
+  //----------------------------------------------------------------------------------------------------
+  // Called when in the autocomplete box user unselect one chip
+  onUnselect(event:any)
+  {
+    console.log("unselect");
+    this.autocomplete.hide();
+
+    //this.autocomplete.search({query:""}, "", this.search);
+
+  }
+
+  //----------------------------------------------------------------------------------------------------
    search(event)
   {
-    const query = `
-      PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-      PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-      
-      SELECT distinct ?siteLabel WHERE {
-        ?disorder a  <https://w3id.org/hacid/onto/mdx/Disorder> .
-        ?disorder rdfs:label ?siteLabel .
-        FILTER(STRSTARTS(?siteLabel, "`+event.query+`"))
-        FILTER(lang(?siteLabel) = "en-gb" || lang(?siteLabel) = "en-us" || lang(?siteLabel) = "en")
-      }`;
-    
-    this.sparqlService.findClassInstances(this.endpoint,"<https://w3id.org/hacid/onto/mdx/Disorder>", event.query,"" )
+    var containList:string[]=[];
+    containList.push(event.query);
+
+    if(this.autoCompleteTexts)
+    this.autoCompleteTexts.forEach(elem=>{ containList.push(elem.name)});
+ 
+
+    this.sparqlService.findClassInstancesURIs(this.endpoint,
+                "<https://w3id.org/hacid/onto/ccso/"+this.selectValue+">", 
+                containList )
       .subscribe({
         next: (data) => this.searchResults(data),
         error: (error)=> console.error('There was an error!', error)
@@ -378,13 +395,14 @@ export class CytoscapeGraphComponent
     var sparqlResults = Results.results.bindings;
     sparqlResults.forEach(result => {
       // Add nodes for subject and object
-      var value:string = result['classInstanceLabel']['value'];
-      suggestions.push({ "name": value, "uri":result['classInstance']['value']});
+      var value:string = result['classInstance']['value'];
+      suggestions.push({ "name": value.split('/').pop(), "uri":result['classInstance']['value']});
     } );
 
     // loading wheel of the search box will only disappear if suggestions array is assigned a compleately new one. It doesn't work to empty it and add elements.
     this.suggestions = suggestions;
   }
+  //
 
   //----------------------------------------------------------------------------------------------------
   onTappingGeneral(evt)
@@ -631,6 +649,5 @@ export class CytoscapeGraphComponent
 
     return elements;
   }
-}
-  //----------------------------------------------------------------------------------------------------
 
+}

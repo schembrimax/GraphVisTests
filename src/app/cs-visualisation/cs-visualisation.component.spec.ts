@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { LexguiTestComponent } from './lexgui-test.component';
+import { CSVisualisationComponent } from './CSVisualisationComponent';
 
-describe('LexguiTestComponent', () => {
-  let component: LexguiTestComponent;
-  let fixture: ComponentFixture<LexguiTestComponent>;
+describe('CSVisualisationComponent', () => {
+  let component: CSVisualisationComponent;
+  let fixture: ComponentFixture<CSVisualisationComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [LexguiTestComponent]
+      imports: [CSVisualisationComponent]
     })
     .compileComponents();
     
-    fixture = TestBed.createComponent(LexguiTestComponent);
+    fixture = TestBed.createComponent(CSVisualisationComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

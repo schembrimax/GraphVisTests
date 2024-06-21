@@ -11,6 +11,7 @@ export class SparqlService {
 
   constructor(protected http: HttpClient) { }
 
+  //---------------------------------------------------------------------------------------------------------------------------------------------
   querySparqlEndpoint(endpointUrl: string, query: string):Observable<any> {
     const headers = new HttpHeaders()
                     .set('Content-Type','text/plain')
@@ -18,6 +19,7 @@ export class SparqlService {
     return this.http.get(endpointUrl, { headers, params: { query } });
   }
 
+  //---------------------------------------------------------------------------------------------------------------------------------------------
   findClasses(endpointUrl: string):Observable<any>{
     const headers = new HttpHeaders()
                     .set('Content-Type','text/plain')
@@ -35,6 +37,7 @@ export class SparqlService {
     return this.http.get(endpointUrl, { headers, params: { query } });
   }
 
+  //---------------------------------------------------------------------------------------------------------------------------------------------
   findClassInstances(endpointUrl: string, classtype:string ,startswith:string, contains:string):Observable<any>
   {
     const headers = new HttpHeaders()
@@ -51,8 +54,34 @@ export class SparqlService {
     SELECT distinct ?classInstance ?classInstanceLabel WHERE {
           ?classInstance a  `+classtype+` .
           ?classInstance rdfs:label ?classInstanceLabel .`+ startswith + contains + `
-          FILTER(lang(?classInstanceLabel) = "en-gb")    
+          FILTER(lang(?classInstanceLabel) = "en-gb" || lang(?classInstanceLabel) = "en-us" || lang(?classInstanceLabel) = "en")    
     } `;    
     return this.http.get(endpointUrl, { headers, params: { query } });
   }
+
+  //---------------------------------------------------------------------------------------------------------------------------------------------
+  findClassInstancesURIs(endpointUrl: string, classtype:string , contains:string[]):Observable<any>
+  {
+    const headers = new HttpHeaders()
+                    .set('Content-Type','text/plain')
+                    .set('Accept','application/sparql-results+json');
+
+    
+    var containsLine="";
+    for(var str of contains )     
+      containsLine += "FILTER CONTAINS(str(?localName),'"+ str +"').\n";
+
+    var query=`
+    PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        
+    SELECT distinct ?classInstance WHERE {
+          ?classInstance a  `+classtype+` .
+          BIND (REPLACE(STR(?classInstance), "^.*/([^/]*)$", "$1") as ?localName)
+          `+ containsLine + `
+    } `;
+
+    return this.http.get(endpointUrl, { headers, params: { query } });
+  }
+  //---------------------------------------------------------------------------------------------------------------------------------------------
 }

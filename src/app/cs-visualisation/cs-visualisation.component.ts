@@ -20,6 +20,8 @@ import cytoscape, { BaseLayoutOptions } from 'cytoscape';
 import cola from 'cytoscape-cola';
 import elk from 'cytoscape-elk';
 import { MenuItem } from 'primeng/api';
+import { forkJoin } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 
 interface SparqlResponse {
   head: {
@@ -50,7 +52,8 @@ interface SparqlResponse {
 
 
 
-export class CSVisualisationComponent {
+export class CSVisualisationComponent
+{
 
   @ViewChild('cy') cytoElem: ElementRef;
   @ViewChild('contextMenu') contextMenu: ElementRef;
@@ -136,7 +139,8 @@ export class CSVisualisationComponent {
   }
 
   //----------------------------------------------------------------------------------------------------
-  protected initCharts(elements: cytoscape.ElementDefinition[]) {
+  protected initCharts(elements: cytoscape.ElementDefinition[])
+  {
     console.log("Initializing charts....."+elements+"   ");
 
     cytoscape.use(elk);  
@@ -161,7 +165,7 @@ export class CSVisualisationComponent {
                 "border-color":'#427',//#267
                 'text-margin-y':-5,
                 'text-wrap':'wrap',
-                'text-max-width':'200'
+                'text-max-width':'200px'
             }
         },
 
@@ -190,194 +194,24 @@ export class CSVisualisationComponent {
       wheelSensitivity:0.2
     });
 
-
-    this.cy.on('tap','node', this.onNodeSelected1.bind(this));  // bind(this) is important because give the context to the callback function
+    this.cy.on('tap','node', this.onNodeSelected.bind(this));  // bind(this) is important because give the context to the callback function
     this.cy.on('cxttap', 'node', this.onRightMouseClick.bind(this));
     this.cy.on('mouseover', this.onMouseOver.bind(this));
     this.cy.on('mouseout', this.onMouseOut.bind(this));
     this.cy.on('tap', this.onTappingGeneral.bind(this));
     this.cy.maxZoom(2);
-    /*
-    this.cy.add({data:{id:"Disorder",label:"Disorder"}});
-    this.cy.center();
-    this.cy.zoom(1);
-    //*/
-  }
-
-  //----------------------------------------------------------------------------------------------------
-  primeMouseEnter()
-  {
-    console.log(" MOUSE enter ");
-  }
-
-  //----------------------------------------------------------------------------------------------------
-  buttonSelectClick(){
-    console.log("Button Selected Option "+this.selectValue);
-  }
- 
-  onBlur(event:any)
-  {
-    console.log(" Blurred ///////////////");
-  }
-
-  onFocus()
-  {
-    console.log(" Focused");
-  }
-  
-  //----------------------------------------------------------------------------------------------------
-  onSelectClass(event)
-  {
-    //console.log(" Disorder: "+event.value['name']+'  uri:'+event.value['uri']);
-
-    // we query for all disorder description and find all types of disorder description elements
-    const query = `
-      PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-      PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-      
-      SELECT distinct ?pred  ?predLabel  
-      WHERE {
-        <`+ event.value['uri'] +`> ?pred ?obj .
-        ?pred rdfs:label ?predLabel .
-        FILTER(lang(?predLabel) = "en-gb" || lang(?predLabel)="en" || lang(?predLabel)="en-us") .
-        FILTER(?pred != rdf:type) .
-      }`;
-
     
-    this.sparqlService.querySparqlEndpoint(this.endpoint, query )
-      .subscribe({
-        next: (data) => this.addClass(data, event.value),
-        error: (error)=> console.error('There was an error!', error)
-      });
   }
 
   //----------------------------------------------------------------------------------------------------
-  addClass(Results:SparqlResponse, classInstance:any)
-  {
-    console.log(" Class: "+classInstance['name']+'  uri:'+classInstance['uri']);
-
-    let relations:any[]=[]
-    var sparqlResults = Results.results.bindings;
-    sparqlResults.forEach(result => {
-      // Add nodes for subject and object
-      var value:string = result['predLabel']['value'];
-      console.log(value);
-      relations.push({ "name": value, "uri":result['pred']['value']});
-    } );
-
-    this.cy.add({data:{id: classInstance['uri'],label:classInstance['name'], relationItems:relations, tagged:false }});
-    this.cy.center();
-    this.cy.zoom(2);
-    var layout = this.cy.layout({
-      name: 'elk' // You can use any layout algorithm here
-    });
-    
-    this.cy.layout(this.elkoptions).run();
-    this.cy.center();
-    this.cy.zoom(-2);
-  }
-
-  //----------------------------------------------------------------------------------------------------
-  onNodeSelected1(evt)
-  {
-    var node=evt.target;
-
-    this.outconnections = [];
-
-    if(node!== this.cy)
-    {
-      if(node.data('descriptionItems')!=undefined)
-      {
-        this.outconnections=node.data('descriptionItems');
-        this.isContextMenuVisible = true;
-        this.menuLeft = node.renderedPosition('x')+'px';    
-       this.menuTop = node.renderedPosition('y')+'px';
-       this.menuHeight = 24+ 46*4+'px';
-      }
-      else
-      {
-        console.log(" node id="+node.id());
-        const query = `
-        PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-        
-        SELECT distinct ?pred  ?predLabel  
-        WHERE {
-          <`+ node.id() +`> <https://w3id.org/hacid/onto/mdx/isDescribedBy> ?description .
-          ?description ?pred ?obj .
-          ?pred rdfs:label ?predLabel .
-          FILTER(lang(?predLabel) = "en-gb" || lang(?predLabel)="en" || lang(?predLabel)="en-us") .
-          FILTER(?pred != rdf:type) .
-        }`;
-  
-      
-      this.sparqlService.querySparqlEndpoint(this.endpoint, query )
-        .subscribe({
-          next: (data) => this.onNodeSelectedFirstTime(data, node.id()),
-          error: (error)=> console.error('There was an error!', error)
-        });
-      }
-    }
-  }
-
-  onNodeSelectedFirstTime(Results:SparqlResponse, disorder:any )
-  {    
-    let descrItems:any[]=[]
-    var sparqlResults = Results.results.bindings;
-    sparqlResults.forEach(result => {
-      // Add nodes for subject and object
-      var value:string = result['predLabel']['value'];
-      console.log(value);
-      descrItems.push({ "name": value, "uri":result['pred']['value']});
-    } );
-    
-    var node =this.cy.getElementById(disorder);
-    node.data().descriptionItems = descrItems;
-    this.outconnections = [];
-    this.outconnections=node.data('descriptionItems');
-    this.isContextMenuVisible = true;
-    this.menuLeft = node.renderedPosition('x')+'px';    
-    this.menuTop = node.renderedPosition('y')+'px';
-    this.menuHeight = 24+ 46*4+'px';
-  }
-
-  //----------------------------------------------------------------------------------------------------
-  onKeyUp(event: KeyboardEvent)
-  {
-
-    if (event.key == "Enter" )
-    {
-     let tokenInput = event.target as HTMLInputElement;
-
-     if (tokenInput.value) {
-      this.autoCompleteTexts.push({"name":tokenInput.value});
-      tokenInput.value = "";
-     }
-     console.log("hello");
-     this.autocomplete.show();
-    }
-
-  }
-  //----------------------------------------------------------------------------------------------------
-  // Called when in the autocomplete box user unselect one chip
-  onUnselect(event:any)
-  {
-    console.log("unselect");
-    this.autocomplete.hide();
-
-    //this.autocomplete.search({query:""}, "", this.search);
-
-  }
-
-  //----------------------------------------------------------------------------------------------------
-   search(event)
+  search(event)
   {
     var containList:string[]=[];
     containList.push(event.query);
 
     if(this.autoCompleteTexts)
     this.autoCompleteTexts.forEach(elem=>{ containList.push(elem.name)});
- 
+  
 
     this.sparqlService.findClassInstancesURIs(this.endpoint,
                 "<https://w3id.org/hacid/onto/ccso/"+this.selectValue+">", 
@@ -403,77 +237,312 @@ export class CSVisualisationComponent {
     this.suggestions = suggestions;
   }
   //
+  
+  //----------------------------------------------------------------------------------------------------
+  primeMouseEnter()
+  {
+    console.log(" MOUSE enter ");
+  }
+
+  //----------------------------------------------------------------------------------------------------
+  buttonSelectClick(){
+    console.log("Button Selected Option "+this.selectValue);
+  }
+ 
+  onBlur(event:any)
+  {
+    console.log(" Blurred ///////////////");
+  }
+
+  onFocus()
+  {
+    console.log(" Focused");
+  }
+  
+  //----------------------------------------------------------------------------------------------------
+  /*         An element has been selected from the dropdown list of the search box
+   */
+  onSelectClass(event)
+  {
+    //console.log(" Disorder: "+event.value['name']+'  uri:'+event.value['uri']);
+    this.addInstance(event)
+ 
+  }
+ 
+  //----------------------------------------------------------------------------------------------------
+  addInstance( instance)
+  {
+    this.cy.add({data:{ 
+      id: instance.value['uri'],
+      label:instance.value['name'].replace(/\.([^ ])/g, '. $1'),
+      dirRels:undefined,
+      invRels:undefined,
+      tagged:false,
+
+      }
+    });
+
+    this.cy.center();
+    this.cy.zoom(2);
+    var layout = this.cy.layout({
+      name: 'elk' // You can use any layout algorithm here
+    });
+
+
+
+  }
+
+  //----------------------------------------------------------------------------------------------------
+  addInstanceRelations( instance, callback )
+  {
+    //console.log(" instance: "+instance.value['name']+'  uri:'+instance.value['uri']);
+    // we query for all direct relations of the node
+    const queryDirectRel = `
+    PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+    
+    SELECT distinct ?pred
+    WHERE {
+      <`+ instance +`> ?pred ?obj .
+      FILTER(?pred != rdf:type) .
+      FILTER(?pred != rdfs:label) .
+    }`;
+
+    // we query for all inverse relations of the node
+    const queryInverseRel = `
+    PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+   
+    SELECT distinct ?pred   
+    WHERE {
+     ?obj ?pred <`+ instance +`>.
+     FILTER(?pred != rdf:type) .
+     FILTER(?pred != rdfs:label) .
+    }`;
+
+    // we execute two sparql query in parallel and get the results when subscribe
+    forkJoin({
+        directRels:this.sparqlService.querySparqlEndpoint(this.endpoint, queryDirectRel ),
+        inverseRels:this.sparqlService.querySparqlEndpoint(this.endpoint, queryInverseRel )
+      }).subscribe({
+        next: (data) =>{
+          console.log(" Class:  uri:"+instance);
+
+          let directRelations:any[]=[]
+          let inverseRelations:any[]=[]
+
+          data.directRels.results.bindings.forEach(result => {
+            console.log(" dRel : "+ result['pred']['value'])
+            directRelations.push({  "name": "-> " + result['pred']['value'].split('/').pop(),
+                                    "uri":result['pred']['value'],
+                                    "direct":true,
+                                    "expanded":false
+                                  });
+          } );
+
+          data.inverseRels.results.bindings.forEach(result => {
+            console.log(" iRel : "+ result['pred']['value'])
+            inverseRelations.push({ "name": "<- " + result['pred']['value'].split('/').pop(),
+                                    "uri":result['pred']['value'],
+                                    "direct":false,
+                                    "expanded":false
+                                  });
+          } );
+
+
+          this.cy.getElementById(instance).data('dirRels',directRelations);
+          this.cy.getElementById(instance).data('invRels',inverseRelations);
+          callback();
+
+        },
+        error: (error)=> console.error('There was an error!', error)
+    });
+  }
+
+  //----------------------------------------------------------------------------------------------------
+  onNodeSelected(evt)
+  {
+    var node=evt.target;
+
+    this.outconnections = [];
+    this.selectedConn = [];
+
+    if(node!== this.cy)
+    {
+      if(node.data('dirRels')==undefined )
+      {
+        console.log(" dirRels = undefined");
+        this.addInstanceRelations(node.data('id'), ()=>{
+          this.outconnections =   node.data('dirRels')?.slice().concat(node.data('invRels')?.slice()  );
+          this.isContextMenuVisible = true;
+          this.menuLeft = node.renderedPosition('x')+'px';    
+          this.menuTop = node.renderedPosition('y')+'px';
+          this.menuHeight = 24+ 46*4+'px';
+        });
+      }
+      this.outconnections =   node.data('dirRels')?.slice().concat(node.data('invRels')?.slice()  );
+      this.isContextMenuVisible = true;
+      this.menuLeft = node.renderedPosition('x')+'px';    
+      this.menuTop = node.renderedPosition('y')+'px';
+      this.menuHeight = 24+ 46*4+'px';
+    }
+
+  }
+
+  //----------------------------------------------------------------------------------------------------
+  onKeyUp(event: KeyboardEvent)
+  {
+
+    if (event.key == "Enter" )
+    {
+     let tokenInput = event.target as HTMLInputElement;
+
+     if (tokenInput.value) {
+      if(this.autoCompleteTexts==null)
+        this.autoCompleteTexts = [];
+      this.autoCompleteTexts.push({"name":tokenInput.value});
+      tokenInput.value = "";
+     }
+     this.autocomplete.show();
+    }
+
+  }
+
+  //----------------------------------------------------------------------------------------------------
+  // Called when in the autocomplete box user unselect one chip
+  onUnselect(event:any)
+  {
+    console.log("unselect");
+    this.autocomplete.hide();
+
+    //this.autocomplete.search({query:""}, "", this.search);
+
+  }
+
 
   //----------------------------------------------------------------------------------------------------
   onTappingGeneral(evt)
   {
     if(evt.target==this.cy)
+    {
       this.isContextMenuVisible=false;
+      this.autocomplete.clear();
+    }
   }
 
   //----------------------------------------------------------------------------------------------------
   onExpand()
   {
+    var directRel:any[] = [];
+    var inverseRel:any[] = [];
+
     console.log(" Expand:"+this.cy.$(':selected').data('id'));
     this.selectedConn.forEach( el=>{
-      console.log(' '+el['uri']);
+      if(el['direct'])
+        directRel.push(el);
+      else
+        inverseRel.push(el)
     });
 
-    var query = `
+    directRel.forEach(element => {
+       console.log(' dr:  '+element['name'])
+    });
+
+    inverseRel.forEach(element => {
+      console.log(' ir:  '+element['name'])
+   });
+
+   //*****************************************************************/
+    var queryDirectRels = `
       PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
       PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
       
-      SELECT distinct ?pred  ?predLabel  ?obj ?objLabel
+      SELECT distinct ?pred ?obj
       WHERE {
-        <`+this.cy.$(':selected').data('id')+`> <https://w3id.org/hacid/onto/mdx/isDescribedBy> ?description .
-        ?description ?pred ?obj .
-        ?pred rdfs:label ?predLabel .
-        ?obj rdfs:label ?objLabel .
-        FILTER(lang(?predLabel) = "en-gb" || lang(?predLabel)="en" ) .
-        FILTER(lang(?objLabel) = "en-gb" || lang(?objLabel)="en" ) .
-        FILTER(?pred != rdf:type) .`;
+        <`+this.cy.$(':selected').data('id')+`> ?pred ?obj .
+        FILTER(?pred != rdf:type) .
+        FILTER(?pred != rdfs:label) .`
+        ;
     
-    if(this.selectedConn.length>0)
+    if(directRel.length>0)
     {
-      query+= ' FILTER(';
+      queryDirectRels+= ' FILTER(';
 
-      this.selectedConn.forEach(el=>{
-          query+=' ?pred=<'+ el['uri'] + '>';
-          if(el!=this.selectedConn[this.selectedConn.length-1])
-            query+=' || ';
+      directRel.forEach(el=>{
+        queryDirectRels+=' ?pred=<'+ el['uri'] + '>';
+          if(el!=directRel[directRel.length-1])
+            queryDirectRels+=' || ';
       });
     
-      query+= ') .';
+      queryDirectRels+= ') .';
     }
 
-    query+='}';
+    queryDirectRels+='} LIMIT 20';
 
-    console.log(" Query="+ query);
+    console.log(" Query="+ queryDirectRels);
+
+
+    //*****************************************************************/
+    var queryInverseRels = `
+    PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
     
-    this.sparqlService.querySparqlEndpoint(this.endpoint, query )
+    SELECT distinct ?pred ?obj
+    WHERE {
+      ?obj ?pred <`+this.cy.$(':selected').data('id')+`> .
+      FILTER(?pred != rdf:type) .
+      FILTER(?pred != rdfs:label) .`
+      ;
+ 
+    if(inverseRel.length>0)
+    {
+      queryInverseRels+= ' FILTER(';
+
+      inverseRel.forEach(el=>{
+        queryInverseRels+=' ?pred=<'+ el['uri'] + '>';
+          if(el!=inverseRel[inverseRel.length-1])
+            queryInverseRels+=' || ';
+      });
+    
+      queryInverseRels+= ') .';
+    }
+
+    queryInverseRels+='} LIMIT 20';
+
+    console.log(" Query="+ queryInverseRels);
+
+    if(directRel.length>0)
+      this.sparqlService.querySparqlEndpoint(this.endpoint, queryDirectRels )
+        .subscribe({
+          next: (data) => this.onNodeExpandDirect(data),
+          error: (error)=> console.error('There was an error!', error)
+        });
+
+    if(inverseRel.length>0)
+      this.sparqlService.querySparqlEndpoint(this.endpoint, queryInverseRels )
       .subscribe({
-        next: (data) => this.onNodeExpanded(data),
+        next: (data) => this.onNodeExpandInverse(data),
         error: (error)=> console.error('There was an error!', error)
       });
 
-      this.isContextMenuVisible = false;
+    this.isContextMenuVisible = false;
   }
 
   //----------------------------------------------------------------------------------------------------
-  onNodeExpanded(Results:SparqlResponse)
+  onNodeExpandDirect(Results:SparqlResponse)
   {
     var sparqlResults = Results.results.bindings;
     sparqlResults.forEach(result => {
       // Add nodes for subject and object
       if(this.cy.getElementById(result['obj']['value']).length==0)
-         this.cy.add({data:{id:result['obj']['value'],label:result['objLabel']['value'], tagged:false}})
-        .style({'shape':'barrel', 'background-color':'#aac'});
+         this.cy.add({data:{id:result['obj']['value'], label:result['obj']['value'].split('/').pop(), tagged:false}});
+//        .style({'shape':'barrel', 'background-color':'#aac','text-wrap':'wrap'});
       
       if(this.cy.getElementById(this.cy.$(':selected').data('id')+result['pred']['value']+ result['obj']['value']).length==0)
         this.cy.add({data:{id:this.cy.$(':selected').data('id')+result['pred']['value']+ result['obj']['value'],
             source:this.cy.$(':selected').data('id'),
             target:result['obj']['value'],
-            label:result['predLabel']['value']
+            label:result['pred']['value'].split('/').pop()
             }}).style({'width':'1'});
     } );
 
@@ -481,91 +550,25 @@ export class CSVisualisationComponent {
   }
 
   //----------------------------------------------------------------------------------------------------
-  onBroader()
-  {
-    var query = `
-    PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-    
-    SELECT distinct ?obj ?objLabel
-    WHERE {
-      <`+this.cy.$(':selected').data('id')+`> <https://w3id.org/hacid/onto/mdx/broader>  ?obj .
-      ?obj rdfs:label ?objLabel .
-      FILTER(lang(?objLabel) = "en-gb" || lang(?objLabel)="en" ) .
-    }`;
-
-    this.sparqlService.querySparqlEndpoint(this.endpoint, query )
-      .subscribe({
-        next: (data) => this.onBroaderResult(data),
-        error: (error)=> console.error('There was an error!', error)
-      });
-    this.isContextMenuVisible=false;
-  }
-
-  //----------------------------------------------------------------------------------------------------
-  onBroaderResult(Results:SparqlResponse)
+  onNodeExpandInverse(Results:SparqlResponse)
   {
     var sparqlResults = Results.results.bindings;
     sparqlResults.forEach(result => {
       // Add nodes for subject and object
-      // Add node if it doesn't alrady exist
-      if( this.cy.getElementById(result['obj']['value']).length==0)
-        this.cy.add({data:{id:result['obj']['value'],label:result['objLabel']['value'], tagged:false}});
-
-      if( this.cy.getElementById(this.cy.$(':selected').data('id')+'broader'+ result['obj']['value']).length==0)
-      this.cy.add({data:{id:this.cy.$(':selected').data('id')+'broader'+ result['obj']['value'],
-            source:this.cy.$(':selected').data('id'),
-            target:result['obj']['value'],
-            label:'broader'
-            }});
-    } );
-
-    this.cy.layout(this.elkoptions).run();
-  }
-
-  //----------------------------------------------------------------------------------------------------
-  onNarrower()
-  {
-    var query = `
-    PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-    
-    SELECT distinct ?obj ?objLabel
-    WHERE {
-      ?obj <https://w3id.org/hacid/onto/mdx/broader>  <`+this.cy.$(':selected').data('id')+`> .
-      ?obj rdfs:label ?objLabel .
-      FILTER(lang(?objLabel) = "en-gb" || lang(?objLabel)="en" ) .
-    }`;
-    this.sparqlService.querySparqlEndpoint(this.endpoint, query )
-      .subscribe({
-        next: (data) => this.onNarrowerResult(data),
-        error: (error)=> console.error('There was an error!', error)
-      });
-      this.isContextMenuVisible = false;
-  }
-
-  //----------------------------------------------------------------------------------------------------
-  onNarrowerResult(Results:SparqlResponse)
-  {
-    var sparqlResults = Results.results.bindings;
-    sparqlResults.forEach(result => {
-       // Add node if it doesn't alrady exist
-       if( this.cy.getElementById(result['obj']['value']).length==0)
-        this.cy.add({data:{id:result['obj']['value'],label:result['objLabel']['value'], tagged:false}});
-
-       if( this.cy.getElementById(result['obj']['value']+'broader'+ this.cy.$(':selected').data('id')).length==0)
-        this.cy.add({data:{id: result['obj']['value']+'broader'+ this.cy.$(':selected').data('id'),
+      if(this.cy.getElementById(result['obj']['value']).length==0)
+         this.cy.add({data:{id:result['obj']['value'], label:result['obj']['value'].split('/').pop(), tagged:false}});
+//        .style({'shape':'barrel', 'background-color':'#aac'});
+      
+      if(this.cy.getElementById(result['obj']['value'] + result['pred']['value'] + this.cy.$(':selected').data('id') ).length==0)
+        this.cy.add({data:{id:result['obj']['value'] + result['pred']['value'] + this.cy.$(':selected').data('id'),
             source:result['obj']['value'],
             target:this.cy.$(':selected').data('id'),
-            label:'broader'
-            }});
+            label:result['pred']['value'].split('/').pop()
+            }}).style({'width':'1'});
     } );
 
     this.cy.layout(this.elkoptions).run();
-  }
-
-
-
+  }  
   //----------------------------------------------------------------------------------------------------
   onRightMouseClick(evt)
   {

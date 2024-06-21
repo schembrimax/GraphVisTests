@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { CSVisualisationComponent } from './CSVisualisationComponent';
+import { CSVisualisationComponent } from './cs-visualisation.component';
 
 describe('CSVisualisationComponent', () => {
   let component: CSVisualisationComponent;

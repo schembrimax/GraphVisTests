@@ -110,10 +110,158 @@ export class CSVisualisationComponent
     elk: {
       'algorithm': 'stress',
       'elk.direction': 'UP',
-      'elk.stress.desiredEdgeLength':'200'
+      'elk.stress.desiredEdgeLength':'150'
     },
     priority: function( edge ){ return null; }, // Edges with a non-nil value are skipped when geedy edge cycle breaking is enabled
   };
+
+  nodeStyels={
+    "Default": {
+      'background-color': '#c3e0d9',//#29a
+      'background-fit':'contain', 
+      'label': 'data(label)',
+      'text-outline-color':'#fff',
+      'text-outline-width':'0.7',
+      'width':'20',
+      'height':'20',
+      'color':'#444',
+      'font-weight':'bold',
+      'font-family':'serif',
+      'font-size':'10',
+      'border-style':'solid',
+      "border-color":'#505957',//#267
+      }
+    ,
+    "Simulation": {
+      'background-color': '#FFF463',//#29a
+      'background-image':'assets/simulation.png',
+      'background-fit':'contain', 
+      'label': 'data(label)',
+      'text-outline-color':'#fff',
+      'text-outline-width':'0.7',
+      'color':'#444',
+      'font-weight':'bold',
+      'font-family':'serif',
+      'border-style':'solid',
+      "border-color":'#908709',//#267
+      }
+    ,
+    "Model": {
+      'background-color': '#71E5EB',//#29a
+      'background-image':'assets/model.png',
+      'background-fit':'contain',
+      'label': 'data(label)',
+      'text-outline-color':'#fff',
+      'text-outline-width':'0.7',
+      'color':'#444',
+      'font-weight':'bold',
+      'font-family':'serif',
+      'border-style':'solid',
+      "border-color":'#1A7F96',//#267
+      }
+    ,
+    "Dataset": {
+      'background-color': '#EFB0EF',//#29a
+      'background-image':'assets/dataset.png',
+      'background-fit':'contain',
+      'label': 'data(label)',
+      'text-outline-color':'#fff',
+      'text-outline-width':'0.7',
+      'color':'#444',
+      'font-size':'10',
+      'font-weight':'bold',
+      'font-family':'serif',
+      'border-style':'solid',
+      "border-color":'#8C1F76',//#267
+      }
+    ,
+    "Organisation": {
+      'background-color': '#37DFAE',//#29a
+      'background-image':'assets/organisation.png',
+      'background-fit':'contain',
+      'label': 'data(label)',
+      'text-outline-color':'#fff',
+      'text-outline-width':'0.7',
+      'color':'#444',
+      'font-weight':'bold',
+      'font-family':'serif',
+      'border-style':'solid',
+      "border-color":'#3AA186',//#267
+      }
+    ,
+    "SpatialRegion": {
+      'background-color': '#7CEB89',//#29a
+      'background-image':'assets/spatial-region.png',
+      'background-fit':'contain',
+      'label': 'data(label)',
+      'text-outline-color':'#fff',
+      'text-outline-width':'0.7',
+      'color':'#444',
+      'font-weight':'bold',
+      'font-family':'serif',
+      'border-style':'solid',
+      "border-color":'#388138',//#267
+      }
+    ,
+    "TimeInterval": {
+      'background-color': '#B9C0FF',//#29a
+      'background-image':'assets/time-interval.png',
+      'background-fit':'contain',
+      'label': 'data(label)',
+      'text-outline-color':'#fff',
+      'text-outline-width':'0.7',
+      'color':'#444',
+      'font-weight':'bold',
+      'font-family':'serif',
+      'border-style':'solid',
+      "border-color":'#525DB1',//#267
+      }
+    ,
+    "Variable": {
+      'background-color': '#CEF0EF',//#29a
+      'background-image':'assets/variable.png',
+      'background-fit':'contain',
+      'label': 'data(label)',
+      'text-outline-color':'#fff',
+      'text-outline-width':'0.7',
+      'color':'#444',
+      'font-weight':'bold',
+      'font-family':'serif',
+      'border-style':'solid',
+      "border-color":'#4F4F4F',//#267
+     }
+    ,
+    "GreenhouseGasConcentrationPathway": {
+      'background-color': '#FD5A56',//#29a
+      'background-image':'assets/ggcp-scenario.png',
+      'background-fit':'contain',
+      'label': 'data(label)',
+      'text-outline-color':'#fff',
+      'text-outline-width':'0.7',
+      'color':'#444',
+      'font-weight':'bold',
+      'font-family':'serif',
+      'border-style':'solid',
+      "border-color":'#7D110F',//#267
+     }
+    ,
+    "TimeDuration": {
+      'background-color': '#FDC453',//#29a
+      'background-image':'assets/time-duration.png',
+      'background-fit':'contain',
+      'label': 'data(label)',
+      'text-outline-color':'#fff',
+      'text-outline-width':'0.7',
+      'color':'#444',
+      'font-weight':'bold',
+      'font-family':'serif',
+      'border-style':'solid',
+      "border-color":'#684726',//#267
+
+     }
+ 
+
+    }
 
   endpoint = 'https://semantics.istc.cnr.it/hacid/sparql';
 
@@ -153,19 +301,24 @@ export class CSVisualisationComponent
         {
             selector: 'node',
             style: {
-                'background-color': '#94b',//#29a
+                'background-color': '#fff',//#29a
+                'background-fit':'contain',
+                'background-position-x':'50%',
+                'background-position-y':'50%',
                 'label': 'data(label)',
                 'text-outline-color':'#fff',
                 'text-outline-width':'0.7',
                 'color':'#444',
+                'font-size':'12',
+                'min-zoomed-font-size':20,
                 'font-weight':'bold',
                 'font-family':'serif',
                 'border-style':'solid',
                 'border-width':'1.5',
-                "border-color":'#427',//#267
+                "border-color":'#00b359',//#267
                 'text-margin-y':-5,
                 'text-wrap':'wrap',
-                'text-max-width':'200px'
+                'text-max-width':'150px'
             }
         },
 
@@ -176,9 +329,9 @@ export class CSVisualisationComponent
                 'line-color': '#555',
                 'target-arrow-color': '#555',
                 'target-arrow-shape': 'triangle',
-                'arrow-scale':1.5,
+                'arrow-scale':1.0,
                 'curve-style':'straight',
-                'font-size':'15px',
+                'font-size':'10px',
                 'font-style':'italic',
                 'color':'#888',
                 'label': 'data(label)',
@@ -274,21 +427,22 @@ export class CSVisualisationComponent
   {
     this.cy.add({data:{ 
       id: instance.value['uri'],
-      label:instance.value['name'].replace(/\.([^ ])/g, '. $1'),
+      label:instance.value['name'].replace(/\./g, '.\u200b')+"\n("+this.selectValue+")",
       dirRels:undefined,
       invRels:undefined,
       tagged:false,
 
       }
-    });
+    }).style(this.nodeStyels[this.selectValue]);
 
     this.cy.center();
     this.cy.zoom(2);
-    var layout = this.cy.layout({
-      name: 'elk' // You can use any layout algorithm here
-    });
 
+    //var layout = this.cy.layout({
+    //  name: 'elk' // You can use any layout algorithm here
+    //});
 
+    this.cy.layout(this.elkoptions).run();
 
   }
 
@@ -372,15 +526,17 @@ export class CSVisualisationComponent
       if(node.data('dirRels')==undefined )
       {
         console.log(" dirRels = undefined");
-        this.addInstanceRelations(node.data('id'), ()=>{
-          this.outconnections =   node.data('dirRels')?.slice().concat(node.data('invRels')?.slice()  );
+        this.addInstanceRelations(
+              node.data('id'),
+              ()=>{
+          this.outconnections = node.data('dirRels')?.slice().concat(node.data('invRels')?.slice()  );
           this.isContextMenuVisible = true;
           this.menuLeft = node.renderedPosition('x')+'px';    
           this.menuTop = node.renderedPosition('y')+'px';
           this.menuHeight = 24+ 46*4+'px';
         });
       }
-      this.outconnections =   node.data('dirRels')?.slice().concat(node.data('invRels')?.slice()  );
+      this.outconnections = node.data('dirRels')?.slice().concat(node.data('invRels')?.slice()  );
       this.isContextMenuVisible = true;
       this.menuLeft = node.renderedPosition('x')+'px';    
       this.menuTop = node.renderedPosition('y')+'px';
@@ -419,7 +575,6 @@ export class CSVisualisationComponent
 
   }
 
-
   //----------------------------------------------------------------------------------------------------
   onTappingGeneral(evt)
   {
@@ -457,9 +612,10 @@ export class CSVisualisationComponent
       PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
       PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
       
-      SELECT distinct ?pred ?obj
+      SELECT distinct ?pred ?obj ?objType
       WHERE {
         <`+this.cy.$(':selected').data('id')+`> ?pred ?obj .
+        OPTIONAL{ ?obj rdf:type ?objType }.
         FILTER(?pred != rdf:type) .
         FILTER(?pred != rdfs:label) .`
         ;
@@ -487,9 +643,10 @@ export class CSVisualisationComponent
     PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
     PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
     
-    SELECT distinct ?pred ?obj
+    SELECT distinct ?pred ?obj ?objType
     WHERE {
       ?obj ?pred <`+this.cy.$(':selected').data('id')+`> .
+      OPTIONAL{ ?obj rdf:type ?objType }.
       FILTER(?pred != rdf:type) .
       FILTER(?pred != rdfs:label) .`
       ;
@@ -535,9 +692,17 @@ export class CSVisualisationComponent
     sparqlResults.forEach(result => {
       // Add nodes for subject and object
       if(this.cy.getElementById(result['obj']['value']).length==0)
-         this.cy.add({data:{id:result['obj']['value'], label:result['obj']['value'].split('/').pop(), tagged:false}});
-//        .style({'shape':'barrel', 'background-color':'#aac','text-wrap':'wrap'});
-      
+      {
+        if( result['objType'] == undefined)
+          result['objType']={'type':'uri','value':'default'};
+        var splitUri:string[] =[];
+        var splitType:string[] =[];
+        splitUri = result['obj']['value'].split('/');
+         this.cy.add({data:{id:result['obj']['value'], label:splitUri.pop()!.replace(/\./g, '.\u200b')+"\n("+splitUri.pop()+")", tagged:false}})
+      .style( (this.nodeStyels[result['objType']['value'].split('/').pop()!] || this.nodeStyels["Default"]) );
+ //      .style({'shape':'barrel', 'background-color':'#aac','text-wrap':'wrap'});
+      }
+
       if(this.cy.getElementById(this.cy.$(':selected').data('id')+result['pred']['value']+ result['obj']['value']).length==0)
         this.cy.add({data:{id:this.cy.$(':selected').data('id')+result['pred']['value']+ result['obj']['value'],
             source:this.cy.$(':selected').data('id'),
@@ -546,6 +711,8 @@ export class CSVisualisationComponent
             }}).style({'width':'1'});
     } );
 
+    this.cy.center();
+    this.cy.zoom(2);
     this.cy.layout(this.elkoptions).run();
   }
 
@@ -556,9 +723,16 @@ export class CSVisualisationComponent
     sparqlResults.forEach(result => {
       // Add nodes for subject and object
       if(this.cy.getElementById(result['obj']['value']).length==0)
-         this.cy.add({data:{id:result['obj']['value'], label:result['obj']['value'].split('/').pop(), tagged:false}});
-//        .style({'shape':'barrel', 'background-color':'#aac'});
-      
+      {
+        if( result['objType'] == undefined)
+          result['objType']={'type':'uri','value':'default'};
+        var splitUri:string[] =[];
+        splitUri = result['obj']['value'].split('/');
+         this.cy.add({data:{id:result['obj']['value'], label:splitUri.pop()!.replace(/\./g, '.\u200b')+"\n("+splitUri.pop()+")", tagged:false}})
+        .style( (this.nodeStyels[result['objType']['value'].split('/').pop()!] || this.nodeStyels["Default"]) );
+      //  .style({'shape':'barrel', 'background-color':'#aac'});
+      }
+
       if(this.cy.getElementById(result['obj']['value'] + result['pred']['value'] + this.cy.$(':selected').data('id') ).length==0)
         this.cy.add({data:{id:result['obj']['value'] + result['pred']['value'] + this.cy.$(':selected').data('id'),
             source:result['obj']['value'],
@@ -567,6 +741,8 @@ export class CSVisualisationComponent
             }}).style({'width':'1'});
     } );
 
+    this.cy.center();
+    this.cy.zoom(2);
     this.cy.layout(this.elkoptions).run();
   }  
   //----------------------------------------------------------------------------------------------------

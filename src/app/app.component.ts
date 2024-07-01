@@ -2,11 +2,13 @@ import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { CytoscapeGraphComponent } from './cytoscape-graph/cytoscape-graph.component';
 import { RadialMenuComponent } from './radial-menu/radial-menu.component';
+import { TreeJsTestComponent } from './tree-js-test/tree-js-test.component';
 //import { HttpClientModule } from '@angular/common/http';
 
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { CSVisualisationComponent } from './cs-visualisation/cs-visualisation.component';
+
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
@@ -27,7 +29,8 @@ const app = initializeApp(firebaseConfig);
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet,CytoscapeGraphComponent, RadialMenuComponent, CSVisualisationComponent],
+  imports: [RouterOutlet,CytoscapeGraphComponent, RadialMenuComponent,
+    CSVisualisationComponent, TreeJsTestComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })

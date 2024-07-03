@@ -45,7 +45,7 @@ export class SparqlService {
                     .set('Accept','application/sparql-results+json');
 
     startswith = startswith? "FILTER(STRSTARTS(LCASE(?classInstanceLabel),LCASE('"+ startswith +"')))." : "";
-    contains = contains? "FILTER CONTAINS(?classInstanceLabel,'"+ contains +"')." : "";
+    contains = contains? "FILTER CONTAINS( LCASE( ?classInstanceLabel ) , LCASE( '"+ contains +"' ) )." : "";
 
     var query=`
     PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
@@ -69,7 +69,7 @@ export class SparqlService {
     
     var containsLine="";
     for(var str of contains )     
-      containsLine += "FILTER CONTAINS(str(?localName),'"+ str +"').\n";
+      containsLine += "FILTER CONTAINS( LCASE( str(?localName) ) , LCASE( '"+ str +"' )  ).\n";
 
     var query=`
     PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>

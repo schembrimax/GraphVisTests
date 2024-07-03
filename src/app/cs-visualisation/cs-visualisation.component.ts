@@ -1,4 +1,5 @@
-import { Component, ViewChild, ElementRef, OnDestroy, AfterContentInit, Inject, EventEmitter, Input, Output, viewChild } from '@angular/core';
+import { Component, ViewChild, ElementRef, ChangeDetectorRef, OnDestroy, AfterContentInit,
+   Inject, EventEmitter, Input, Output, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SparqlService } from '../sparql-service.service';
 import { HttpClientModule } from '@angular/common/http';
@@ -56,8 +57,8 @@ export class CSVisualisationComponent
 {
 
   @ViewChild('cy') cytoElem: ElementRef;
-  @ViewChild('contextMenu') contextMenu: ElementRef;
-  @ViewChild('speedMenu') speedMenu: ElementRef;
+  @ViewChild('contextMenu',{static:false}) contextMenu: ElementRef;
+  //@ViewChild('speedMenu') speedMenu: ElementRef;
   @ViewChild('autocomplete') autocomplete: AutoComplete;
   @Output() optionSelected= new EventEmitter<string>();
 
@@ -72,8 +73,8 @@ export class CSVisualisationComponent
   radialVisible:boolean = false;
 
   // used for the node contextual menu showing expandable relations
-  selectedConn:any[] =[];
-  outconnections:any[]=[];
+  selectedExpRel:any[] =[];
+  expandableRelations:any[]=[];
 
   // used for the node menu
   isNodeMenuVisible:boolean = true;
@@ -266,7 +267,7 @@ export class CSVisualisationComponent
   endpoint = 'https://semantics.istc.cnr.it/hacid/sparql';
 
    //----------------------------------------------------------------------------------------------------
-   constructor(private primengConfig: PrimeNGConfig, private sparqlService:SparqlService)
+   constructor(private primengConfig: PrimeNGConfig, private sparqlService:SparqlService, private changeDetectorRef:ChangeDetectorRef)
   {
 
   }
@@ -282,12 +283,12 @@ export class CSVisualisationComponent
   {
     // override the default on enter behaviour that hides the dropdown
     this.autocomplete.onEnterKey = (event:any)=>{ };
-    this.initCharts([]);
-    console.log(" Speed dial "+ this.speedMenu);
+    this.initialise([]);
+
   }
 
   //----------------------------------------------------------------------------------------------------
-  protected initCharts(elements: cytoscape.ElementDefinition[])
+  protected initialise(elements: cytoscape.ElementDefinition[])
   {
     console.log("Initializing charts....."+elements+"   ");
 
@@ -389,7 +390,6 @@ export class CSVisualisationComponent
     // loading wheel of the search box will only disappear if suggestions array is assigned a compleately new one. It doesn't work to empty it and add elements.
     this.suggestions = suggestions;
   }
-  //
   
   //----------------------------------------------------------------------------------------------------
   primeMouseEnter()
@@ -399,17 +399,17 @@ export class CSVisualisationComponent
 
   //----------------------------------------------------------------------------------------------------
   buttonSelectClick(){
-    console.log("Button Selected Option "+this.selectValue);
+    console.log(" Button Selected Option "+this.selectValue);
   }
  
   onBlur(event:any)
   {
-    console.log(" Blurred ///////////////");
+    console.log(" Blurred ");
   }
 
   onFocus()
   {
-    console.log(" Focused");
+    console.log(" Focused ");
   }
   
   //----------------------------------------------------------------------------------------------------
@@ -418,39 +418,99 @@ export class CSVisualisationComponent
   onSelectClass(event)
   {
     //console.log(" Disorder: "+event.value['name']+'  uri:'+event.value['uri']);
-    this.addInstance(event)
+    this.addInstance(event);
+    this.autoCompleteTexts.pop();
  
   }
  
-  //----------------------------------------------------------------------------------------------------
-  addInstance( instance)
+  /*----------------------------------------------------------------------------------------------------
+   *  Add a node instance to the graph based on the selected knowledge graph instance
+   *  Each cytoscape node added has the following data associated with it
+   *  - id: the node id
+   *  - label: the node label is what is visualized in the interface
+   *  - tagged: a boolean indicating the tagging status of the node
+   *  - 
+   */
+
+  addInstance( kg_instance)
   {
-    this.cy.add({data:{ 
-      id: instance.value['uri'],
-      label:instance.value['name'].replace(/\./g, '.\u200b')+"\n("+this.selectValue+")",
-      dirRels:undefined,
-      invRels:undefined,
-      tagged:false,
 
-      }
-    }).style(this.nodeStyels[this.selectValue]);
+    if(this.cy.getElementById(kg_instance.value['uri']).length==0)
+    {
+      this.cy.add({data:{ 
+        id: kg_instance.value['uri'],
+        label:kg_instance.value['name'].replace(/\./g, '.\u200b')+"\n("+this.selectValue+")",
+        dirRels:undefined,
+        invRels:undefined,
+        tagged:false,
 
-    this.cy.center();
-    this.cy.zoom(2);
+        }
+      }).style(this.nodeStyels[this.selectValue]);
 
-    //var layout = this.cy.layout({
-    //  name: 'elk' // You can use any layout algorithm here
-    //});
+      this.cy.center();
+      this.cy.zoom(2);
 
-    this.cy.layout(this.elkoptions).run();
+      //var layout = this.cy.layout({
+      //  name: 'elk' // You can use any layout algorithm here
+      //});
 
+      this.cy.layout(this.elkoptions).run();
+    }
   }
 
   //----------------------------------------------------------------------------------------------------
-  addInstanceRelations( instance, callback )
+  onNodeSelected(evt)
+  {
+    var node=evt.target;
+
+    this.expandableRelations = [];
+    this.selectedExpRel = []; // reset selected connetions
+
+    if(node!== this.cy)
+    {
+      if( node.data('dirRels')==undefined )
+      {
+        this.addExpandableRelations(
+              node.data('id'),
+              ()=>{
+                this.expandableRelations = node.data('dirRels')?.slice().concat(node.data('invRels')?.slice()  );
+                this.showContextMenu(node.renderedPosition('x'), node.renderedPosition('y'));         
+        });
+      }
+      else
+      {
+        this.expandableRelations = node.data('dirRels')?.slice().concat(node.data('invRels')?.slice()  );
+        this.showContextMenu(node.renderedPosition('x'), node.renderedPosition('y'));
+      }
+
+    }
+  }
+  //----------------------------------------------------------------------------------------------------
+
+  showContextMenu(posx, posy)
+  {
+    this.isContextMenuVisible = true;
+    this.changeDetectorRef.detectChanges();
+
+    var new_posy = (posy + this.contextMenu.nativeElement.offsetHeight) > this.cytoElem.nativeElement.offsetHeight ?
+            (this.cytoElem.nativeElement.offsetHeight-this.contextMenu.nativeElement.offsetHeight) : posy;
+    var new_posx = (posx + this.contextMenu.nativeElement.offsetWidth) > this.cytoElem.nativeElement.offsetWidth ?
+            (this.cytoElem.nativeElement.offsetWidth-this.contextMenu.nativeElement.offsetWidth) : posx;
+    new_posx = (new_posx < posx && new_posy <posy) ? posx - this.contextMenu.nativeElement.offsetWidth : new_posx;
+
+    this.menuLeft = new_posx+'px';    
+    this.menuTop = new_posy+'px';
+    this.menuHeight = 24+ 46*4+'px';
+  }
+
+  //----------------------------------------------------------------------------------------------------
+  // Add the list of expanable relations of the node
+  //----------------------------------------------------------------------------------------------------
+  addExpandableRelations( instance, callback )
   {
     //console.log(" instance: "+instance.value['name']+'  uri:'+instance.value['uri']);
-    // we query for all direct relations of the node
+
+    // we query for all direct relations types of the node
     const queryDirectRel = `
     PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
     PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -462,7 +522,7 @@ export class CSVisualisationComponent
       FILTER(?pred != rdfs:label) .
     }`;
 
-    // we query for all inverse relations of the node
+    // we query for all inverse relations types of the node
     const queryInverseRel = `
     PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
     PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -503,52 +563,17 @@ export class CSVisualisationComponent
                                   });
           } );
 
-
           this.cy.getElementById(instance).data('dirRels',directRelations);
           this.cy.getElementById(instance).data('invRels',inverseRelations);
           callback();
-
         },
         error: (error)=> console.error('There was an error!', error)
     });
   }
 
   //----------------------------------------------------------------------------------------------------
-  onNodeSelected(evt)
-  {
-    var node=evt.target;
-
-    this.outconnections = [];
-    this.selectedConn = [];
-
-    if(node!== this.cy)
-    {
-      if(node.data('dirRels')==undefined )
-      {
-        console.log(" dirRels = undefined");
-        this.addInstanceRelations(
-              node.data('id'),
-              ()=>{
-          this.outconnections = node.data('dirRels')?.slice().concat(node.data('invRels')?.slice()  );
-          this.isContextMenuVisible = true;
-          this.menuLeft = node.renderedPosition('x')+'px';    
-          this.menuTop = node.renderedPosition('y')+'px';
-          this.menuHeight = 24+ 46*4+'px';
-        });
-      }
-      this.outconnections = node.data('dirRels')?.slice().concat(node.data('invRels')?.slice()  );
-      this.isContextMenuVisible = true;
-      this.menuLeft = node.renderedPosition('x')+'px';    
-      this.menuTop = node.renderedPosition('y')+'px';
-      this.menuHeight = 24+ 46*4+'px';
-    }
-
-  }
-
-  //----------------------------------------------------------------------------------------------------
   onKeyUp(event: KeyboardEvent)
   {
-
     if (event.key == "Enter" )
     {
      let tokenInput = event.target as HTMLInputElement;
@@ -561,7 +586,6 @@ export class CSVisualisationComponent
      }
      this.autocomplete.show();
     }
-
   }
 
   //----------------------------------------------------------------------------------------------------
@@ -572,7 +596,6 @@ export class CSVisualisationComponent
     this.autocomplete.hide();
 
     //this.autocomplete.search({query:""}, "", this.search);
-
   }
 
   //----------------------------------------------------------------------------------------------------
@@ -585,14 +608,17 @@ export class CSVisualisationComponent
     }
   }
 
-  //----------------------------------------------------------------------------------------------------
+  /*----------------------------------------------------------------------------------------------------
+   *  Expands selected relations listed in the selectedExpRel array 
+   */
   onExpand()
   {
     var directRel:any[] = [];
     var inverseRel:any[] = [];
 
     console.log(" Expand:"+this.cy.$(':selected').data('id'));
-    this.selectedConn.forEach( el=>{
+
+    this.selectedExpRel.forEach( el=>{
       if(el['direct'])
         directRel.push(el);
       else
@@ -770,7 +796,7 @@ export class CSVisualisationComponent
      // this.nodeMenuLeft = node.renderedPosition('x')-10+'px';    
       //this.nodeMenuTop = node.renderedPosition('y')+-10+'px';
      // this.isNodeMenuVisible=true;
-      this.speedMenu.nativeElement.toggle();
+
     }
   */
   }
@@ -784,49 +810,5 @@ export class CSVisualisationComponent
     //this.isNodeMenuVisible = false;
   }
 
-  convertDataToCytoscapeFormat(Results:SparqlResponse) {
-    const elements: cytoscape.ElementDefinition[]=[];
-
-    var sparqlResults = Results.results.bindings;
-
-    console.log(" sparql result = "+JSON.stringify(Results, null, 2));
-
-    
-    // create nodes
-    
-    sparqlResults.forEach(result => {
-        // Add nodes for subject and object
-        var value:string = result['subject']['value'];
-        elements.push({ data: { id: result['subject']['value'],
-                                label: (result['subject']['value'].split('/').pop())?.substring(0,10),
-                                longlabel:result['subject']['value'].split('/').pop(),
-                                shortlabel:(result['subject']['value'].split('/').pop())?.substring(0,10)
-                              } });
-        //if (result.object.type === 'uri') {
-        elements.push({ data: { id: result['object']['value'],
-                                label: (result['object']['value'].split('/').pop())?.substring(0,10),
-                                longlabel:result['object']['value'].split('/').pop(),
-                                shortlabel:(result['object']['value'].split('/').pop())?.substring(0,10)
-                              } });
-        
-        //
-    } );
-
-    //* creates edges
-    sparqlResults.forEach(result => {
-        // Add edge
-        elements.push({
-            data: {
-                id: result['subject']['value'] + result['predicate']['value'] + result['object']['value'],
-                source: result['subject']['value'],
-                target: result['object']['value'],
-                label: result['predicate']['value'].split('/').pop()
-            }
-        });
-    });
-    //*/
-
-    return elements;
-  }
-
+  //----------------------------------------------------------------------------------------------------
 }

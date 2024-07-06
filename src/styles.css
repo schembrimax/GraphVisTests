@@ -4,8 +4,73 @@
 html, body { height: 100%; }
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 
-.p-speeddial-button.p-button.p-button-icon-only {
-    width: 2.5rem;
-    height: 2.5rem;
-  }
+.p-buttonset .p-button{
+  font-weight: 100;
+  padding: 0.4em 0.6em;
+  margin: 0.2em;
+  border-radius: 0.5em;
+  border-color: black;
+  color:rgb(46, 46, 46);
+}
 
+.wrapper {
+  display: grid;
+  grid-template-columns: 1fr 1fr ;
+}
+
+
+.p-listbox .p-listbox-list .p-listbox-item {
+  padding: 0.5rem 0.7rem;
+}
+
+.p-listbox .p-listbox-header{
+  padding: 0.7rem 0.7rem;
+}
+/*
+
+ .p-buttonset .p-button:first-of-type
+{
+  background-color: #71E5EB;
+}
+
+.p-buttonset .p-button:nth-of-type(2)
+{
+  background-color: #FFF463;
+}
+
+.p-buttonset .p-button:nth-of-type(3)
+{
+  background-color: #EFB0EF;
+}
+
+.p-buttonset .p-button:nth-of-type(4)
+{
+  background-color: #37DFAE;
+}
+
+.p-buttonset .p-button:nth-of-type(5)
+{
+  background-color: #FD5A56;
+}
+
+.p-buttonset .p-button:nth-of-type(6)
+{
+  background-color: #7CEB89;
+}
+
+.p-buttonset .p-button:nth-of-type(7)
+{
+  background-color: #FDC453;
+}
+
+.p-buttonset .p-button:nth-of-type(8)
+{
+  background-color: #B9C0FF;
+}
+
+.p-buttonset .p-button:nth-of-type(9)
+{
+  background-color: #9edfdc;
+}
+
+*/

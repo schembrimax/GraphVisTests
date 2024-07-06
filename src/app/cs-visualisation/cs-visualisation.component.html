@@ -3,33 +3,33 @@
   <img src="assets/HACID_Logo_inverted.svg" style="position: absolute; height: 60px; left: 20px; top: 20px; z-index: 1000;">
 
   <div [ngStyle]="{'position':'fixed','z-index':'1000','top':'40px','left':'30%','width':'40%'}">
-  <span class="p-float-label" >
-  
-    <p-autoComplete #autocomplete
-        inputId="float-label"
-        field="name"
-        [(ngModel)]="autoCompleteTexts"
-        [suggestions]="suggestions" 
-        [minLength]="2" 
-        [style]="{'width':'100%','display':'inline-block'}"
-        [inputStyle]="{'width':'100%','display':'inline-block'}"
-        [showClear]="true"
-        (completeMethod)="search($event)"
-        [multiple]="true"
-        (blur)="onBlur($event.target)"
-        (onFocus)="onFocus"
-        (onKeyUp)="onKeyUp($event)"
-        (onSelect)="onSelectClass($event)"
-        (onUnselect)="onUnselect($event)"
-    >
 
+    <span [style]="{'display':'grid', 'grid-template-columns':'1fr 30px'}">
+      <span class="p-float-label p-fluid  " >
       
-    </p-autoComplete>
-    <label for="float-label">Search {{selectValue}}...</label>
+        <p-autoComplete #autocomplete
+            inputId="float-label"
+            field="name"
+            [(ngModel)]="autoCompleteTexts"
+            [suggestions]="suggestions" 
+            [minLength]="2"
+            [showClear]="true"
+            (completeMethod)="search($event)"
+            [multiple]="true"
+            (blur)="onBlur($event.target)"
+            (onFocus)="onFocus"
+            (onKeyUp)="onKeyUp($event)"
+            (onSelect)="onSelectClass($event)"
+            (onUnselect)="onUnselect($event)"
+            >
+        </p-autoComplete>
 
-  </span>
+        <label for="float-label">Search {{selectValue}}...</label>
+      </span>
+      <p-button *ngIf="multiRelSearch" [style]="{'margin-left':'5px'}" (onClick)="onMultiRelExpand()"   > >> </p-button>
+    </span>
 
-    <p-selectButton [ngStyle]="{'text-align':'center','padding':'10px'}"
+    <p-selectButton [ngStyle]="{'text-align':'center','padding':'3px'}"
         [options]="stateOptions"
         [(ngModel)]="selectValue"
         [multiple]="false"
@@ -70,7 +70,7 @@
           <p-button label="Narrower" [style]="{'width':'50%','display':'inline','background-color':'#29a'}" (onClick)="onNarrower()"></p-button>
         </div>
       -->
-
+    <p-button label="{{ contextMenuHeader }}" (onClick)="onContextHeaderClick()" [style]="{'width':'100%','background-color':'rgb(47 135 161)'}" > </p-button> 
     <p-listbox 
           [options]="expandableRelations"
           [(ngModel)]="selectedExpRel"
@@ -79,7 +79,7 @@
           optionLabel="name"
           [listStyle]="{'max-height': menuHeight}"></p-listbox>
           
-    <p-button label="Expand" [style]="{'width':'100%'}" (onClick)="onExpand()"></p-button> 
+    <p-button label="Expand" [style]="{'width':'100%','background-color':'rgb(111 196 221)'}" (onClick)="onExpand()"></p-button> 
   </div>
 
 

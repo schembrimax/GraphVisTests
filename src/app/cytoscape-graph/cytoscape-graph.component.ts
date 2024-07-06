@@ -364,7 +364,7 @@ export class CytoscapeGraphComponent
         FILTER(lang(?siteLabel) = "en-gb" || lang(?siteLabel) = "en-us" || lang(?siteLabel) = "en")
       }`;
     
-    this.sparqlService.findClassInstances(this.endpoint,"<https://w3id.org/hacid/onto/mdx/Disorder>", event.query,"" )
+    this.sparqlService.findClassInstances(this.endpoint,"<https://w3id.org/hacid/onto/mdx/Disorder>", event.query,[] )
       .subscribe({
         next: (data) => this.searchResults(data),
         error: (error)=> console.error('There was an error!', error)

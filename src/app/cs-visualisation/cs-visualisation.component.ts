@@ -21,7 +21,7 @@ import cytoscape, { BaseLayoutOptions } from 'cytoscape';
 import cola from 'cytoscape-cola';
 import elk from 'cytoscape-elk';
 import { MenuItem } from 'primeng/api';
-import { forkJoin } from 'rxjs';
+import { elementAt, forkJoin } from 'rxjs';
 import { firstValueFrom } from 'rxjs';
 
 interface SparqlResponse {
@@ -64,9 +64,11 @@ export class CSVisualisationComponent
 
   // context menu
   isContextMenuVisible:boolean=false;
-  menuLeft:string;
-  menuTop:string;
-  menuHeight:string;
+  menuLeft :string;
+  menuTop :string;
+  menuHeight :string;
+  contextMenuHeader :string;
+  currentContextNode :any;
 
   cy: cytoscape.Core;
 
@@ -91,8 +93,22 @@ export class CSVisualisationComponent
   selectedItem:string = '';
   autoCompleteTexts:any[]=[];
 
+  // multiple relation search
+  multiRelSearch = false;
+
+  // list of tagged nodes
+  taggedNodes:any[] = [];
+
   // used for select Button
-  stateOptions:any[] = [{"name":"Model", value:"Model"}, {"name":"Simulation", value:"Simulation"},{"name":"Dataset",value:"Dataset"}];
+  stateOptions:any[] = [{"name":"Model", value:"Model"},
+                        {"name":"Simulation", value:"Simulation"},
+                        {"name":"Dataset",value:"Dataset"},
+                        {"name":"Organisation",value:"Organisation"},
+                        {"name":"GGCP Scenario",value:"GreenhouseGasConcentrationPathway"},
+                        {"name":"Spatial Region",value:"SpatialRegion"},
+                        {"name":"Time Duration",value:"TimeDuration"},
+                        {"name":"Time Interval",value:"TimeInterval"},
+                        {"name":"Variable",value:"Variable"},];
   selectValue = "Model";
 
   elkoptions = {
@@ -348,11 +364,12 @@ export class CSVisualisationComponent
       wheelSensitivity:0.2
     });
 
-    this.cy.on('tap','node', this.onNodeSelected.bind(this));  // bind(this) is important because give the context to the callback function
-    this.cy.on('cxttap', 'node', this.onRightMouseClick.bind(this));
+    this.cy.on('cxttap','node', this.onContextTap.bind(this));  // bind(this) is important because give the context to the callback function
+    this.cy.on('tap', 'node', this.onTap.bind(this));
     this.cy.on('mouseover', this.onMouseOver.bind(this));
     this.cy.on('mouseout', this.onMouseOut.bind(this));
     this.cy.on('tap', this.onTappingGeneral.bind(this));
+    this.cy.on('cxttap',this.onTappingGeneral.bind(this));
     this.cy.maxZoom(2);
     
   }
@@ -364,11 +381,14 @@ export class CSVisualisationComponent
     containList.push(event.query);
 
     if(this.autoCompleteTexts)
-    this.autoCompleteTexts.forEach(elem=>{ containList.push(elem.name)});
+      this.autoCompleteTexts.forEach(elem=>{ containList.push(elem.name)});
   
+    var prefix = this.selectValue =="Organisation" || this.selectValue =="TimeInterval" ? "<https://w3id.org/hacid/onto/top-level/":"<https://w3id.org/hacid/onto/ccso/";
+    var classURI = prefix +this.selectValue+">";
 
-    this.sparqlService.findClassInstancesURIs(this.endpoint,
-                "<https://w3id.org/hacid/onto/ccso/"+this.selectValue+">", 
+    this.sparqlService.findClassInstances(this.endpoint,
+                classURI,
+                "", 
                 containList )
       .subscribe({
         next: (data) => this.searchResults(data),
@@ -383,8 +403,8 @@ export class CSVisualisationComponent
     var sparqlResults = Results.results.bindings;
     sparqlResults.forEach(result => {
       // Add nodes for subject and object
-      var value:string = result['classInstance']['value'];
-      suggestions.push({ "name": value.split('/').pop(), "uri":result['classInstance']['value']});
+      var value:string = result['classInstanceLabel']['value'];
+      suggestions.push({ "name": value, "uri":result['classInstance']['value']});
     } );
 
     // loading wheel of the search box will only disappear if suggestions array is assigned a compleately new one. It doesn't work to empty it and add elements.
@@ -459,7 +479,7 @@ export class CSVisualisationComponent
   }
 
   //----------------------------------------------------------------------------------------------------
-  onNodeSelected(evt)
+  onContextTap(evt)
   {
     var node=evt.target;
 
@@ -468,6 +488,8 @@ export class CSVisualisationComponent
 
     if(node!== this.cy)
     {
+      this.currentContextNode = node;
+      this.contextMenuHeader = '\u{1F517} '+ (node.data('label').length >25 ? node.data('label').substring(0,25)+"...": node.data('label'));
       if( node.data('dirRels')==undefined )
       {
         this.addExpandableRelations(
@@ -480,7 +502,7 @@ export class CSVisualisationComponent
       else
       {
         this.expandableRelations = node.data('dirRels')?.slice().concat(node.data('invRels')?.slice()  );
-        this.showContextMenu(node.renderedPosition('x'), node.renderedPosition('y'));
+        this.showContextMenu(evt.originalEvent.offsetX , evt.originalEvent.offsetY);
       }
 
     }
@@ -489,18 +511,29 @@ export class CSVisualisationComponent
 
   showContextMenu(posx, posy)
   {
+
     this.isContextMenuVisible = true;
     this.changeDetectorRef.detectChanges();
 
     var new_posy = (posy + this.contextMenu.nativeElement.offsetHeight) > this.cytoElem.nativeElement.offsetHeight ?
-            (this.cytoElem.nativeElement.offsetHeight-this.contextMenu.nativeElement.offsetHeight) : posy;
+                    (this.cytoElem.nativeElement.offsetHeight-this.contextMenu.nativeElement.offsetHeight-10) : posy+10;
+
     var new_posx = (posx + this.contextMenu.nativeElement.offsetWidth) > this.cytoElem.nativeElement.offsetWidth ?
-            (this.cytoElem.nativeElement.offsetWidth-this.contextMenu.nativeElement.offsetWidth) : posx;
+                    (this.cytoElem.nativeElement.offsetWidth-this.contextMenu.nativeElement.offsetWidth-10) : posx+10;
+
     new_posx = (new_posx < posx && new_posy <posy) ? posx - this.contextMenu.nativeElement.offsetWidth : new_posx;
 
     this.menuLeft = new_posx+'px';    
     this.menuTop = new_posy+'px';
     this.menuHeight = 24+ 46*4+'px';
+  }
+
+  //----------------------------------------------------------------------------------------------------
+
+  onContextHeaderClick()
+  {
+    window.open( this.currentContextNode.data('id'), '_blank');
+
   }
 
   //----------------------------------------------------------------------------------------------------
@@ -604,9 +637,11 @@ export class CSVisualisationComponent
     if(evt.target==this.cy)
     {
       this.isContextMenuVisible=false;
+      this.currentContextNode = null;
       this.autocomplete.clear();
     }
   }
+
 
   /*----------------------------------------------------------------------------------------------------
    *  Expands selected relations listed in the selectedExpRel array 
@@ -616,8 +651,7 @@ export class CSVisualisationComponent
     var directRel:any[] = [];
     var inverseRel:any[] = [];
 
-    console.log(" Expand:"+this.cy.$(':selected').data('id'));
-
+    // sort relations based on type (direct, inverse)
     this.selectedExpRel.forEach( el=>{
       if(el['direct'])
         directRel.push(el);
@@ -625,23 +659,18 @@ export class CSVisualisationComponent
         inverseRel.push(el)
     });
 
-    directRel.forEach(element => {
-       console.log(' dr:  '+element['name'])
-    });
-
-    inverseRel.forEach(element => {
-      console.log(' ir:  '+element['name'])
-   });
-
    //*****************************************************************/
     var queryDirectRels = `
       PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
       PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
       
-      SELECT distinct ?pred ?obj ?objType
+      SELECT distinct ?pred ?obj ?objType ?objLabel
       WHERE {
-        <`+this.cy.$(':selected').data('id')+`> ?pred ?obj .
-        OPTIONAL{ ?obj rdf:type ?objType }.
+        <`+this.currentContextNode.data('id')+`> ?pred ?obj .
+        OPTIONAL{?obj rdfs:label ?objLabel}.
+        OPTIONAL{ ?obj rdf:type ?objType 
+                  FILTER(lang(?objLabel) = "en-gb" || lang(?objLabel) = "en-us" || lang(?objLabel) = "en").
+          }.
         FILTER(?pred != rdf:type) .
         FILTER(?pred != rdfs:label) .`
         ;
@@ -659,7 +688,7 @@ export class CSVisualisationComponent
       queryDirectRels+= ') .';
     }
 
-    queryDirectRels+='} LIMIT 20';
+    queryDirectRels+='} LIMIT 10';
 
     console.log(" Query="+ queryDirectRels);
 
@@ -669,10 +698,13 @@ export class CSVisualisationComponent
     PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
     PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
     
-    SELECT distinct ?pred ?obj ?objType
+    SELECT distinct ?pred ?obj ?objType ?objLabel
     WHERE {
-      ?obj ?pred <`+this.cy.$(':selected').data('id')+`> .
-      OPTIONAL{ ?obj rdf:type ?objType }.
+      ?obj ?pred <`+this.currentContextNode.data('id')+`> .
+      OPTIONAL{?obj rdfs:label ?objLabel}.
+      OPTIONAL{ ?obj rdf:type ?objType 
+                FILTER(lang(?objLabel) = "en-gb" || lang(?objLabel) = "en-us" || lang(?objLabel) = "en").
+        }.
       FILTER(?pred != rdf:type) .
       FILTER(?pred != rdfs:label) .`
       ;
@@ -690,7 +722,7 @@ export class CSVisualisationComponent
       queryInverseRels+= ') .';
     }
 
-    queryInverseRels+='} LIMIT 20';
+    queryInverseRels+='} LIMIT 10';
 
     console.log(" Query="+ queryInverseRels);
 
@@ -711,6 +743,113 @@ export class CSVisualisationComponent
     this.isContextMenuVisible = false;
   }
 
+    /*----------------------------------------------------------------------------------------------------
+   *  Expands selected relations listed in the selectedExpRel array 
+   */
+  onExpand2()
+  {
+    this.isContextMenuVisible = false;  // hide context menu
+
+    this.selectedExpRel.forEach( el=>{
+      if(el['direct'])
+      {
+        var queryDirectRels = 
+          `
+            PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            
+            SELECT distinct ?pred ?obj ?objType ?objLabel
+            WHERE {
+              <`+this.currentContextNode.data('id')+`> <`+ el['uri']+`> ?obj .
+              OPTIONAL{?obj rdfs:label ?objLabel}.
+              OPTIONAL{ ?obj rdf:type ?objType 
+                        FILTER(lang(?objLabel) = "en-gb" || lang(?objLabel) = "en-us" || lang(?objLabel) = "en").}.
+              BIND(  <`+el['uri'] +`> as ?pred).
+              }
+          `;
+
+        this.sparqlService.querySparqlEndpoint(this.endpoint, queryDirectRels )
+            .subscribe({
+              next: (data) => this.onNodeExpandDirect(data),
+              error: (error)=> console.error('There was an error!', error)
+        });
+      }
+      else
+      {
+        var queryInverseRels =
+          ` 
+            PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            
+            SELECT distinct ?pred ?obj ?objType ?objLabel
+            WHERE {
+              ?obj   <`+el['uri'] +`> <`+this.currentContextNode.data('id')+`> .
+              OPTIONAL{?obj rdfs:label ?objLabel}.
+              OPTIONAL{ ?obj rdf:type ?objType 
+                        FILTER(lang(?objLabel) = "en-gb" || lang(?objLabel) = "en-us" || lang(?objLabel) = "en").}.
+              BIND(  <`+el['uri'] +`> as ?pred).
+              }
+          `;
+
+        this.sparqlService.querySparqlEndpoint(this.endpoint, queryInverseRels )
+            .subscribe({
+              next: (data) => this.onNodeExpandInverse(data),
+              error: (error)=> console.error('There was an error!', error)
+        });      
+      }
+    });
+
+  }
+
+
+  //----------------------------------------------------------------------------------------------------
+  onNodeExpandRelation(Results:SparqlResponse, expandedRelation:any)
+  {
+    var expandedNodeURI = this.currentContextNode.data('id');
+    var expandedRelationURI = expandedRelation['uri'];
+    var sparqlResults = Results.results.bindings;
+    sparqlResults.forEach(result => {
+      // Add obj node
+      if(this.cy.getElementById(result['obj']['value']).length==0)
+      {
+        var nodeLabel = "";
+        var splitUri:string[] =[];
+        splitUri = result['obj']['value'].split('/');
+
+        if( result['objType'] == undefined)
+          result['objType']={'type':'uri','value':'default'};
+
+        if( result['objLabel'] == undefined)
+          {
+            nodeLabel = splitUri.pop()!.replace(/\./g, '.\u200b')+"\n("+splitUri.pop()+")";
+          }
+          else
+            nodeLabel = result['objLabel']['value'].replace(/\./g, '.\u200b')
+
+
+//         this.cy.add({data:{id:result['obj']['value'], label:splitUri.pop()!.replace(/\./g, '.\u200b')+"\n("+splitUri.pop()+")", tagged:false}})
+         this.cy.add({data:{id:result['obj']['value'], label: nodeLabel, tagged:false}})
+      .style( (this.nodeStyels[result['objType']['value'].split('/').pop()!] || this.nodeStyels["Default"]) );
+ //      .style({'shape':'barrel', 'background-color':'#aac','text-wrap':'wrap'});
+      }
+
+      // add relation
+      var newRelationId = this.currentContextNode.data('id')+result['pred']['value']+ result['obj']['value'];
+      if(this.cy.getElementById(newRelationId).length==0)
+      {
+        this.cy.add({data:{id: newRelationId,
+            source:this.currentContextNode.data('id'),
+            target:result['obj']['value'],
+            label:result['pred']['value'].split('/').pop()
+            }}).style({'width':'1'});
+      }
+    });
+
+    this.cy.center();
+    this.cy.zoom(2);
+    this.cy.layout(this.elkoptions).run();
+  }
+
   //----------------------------------------------------------------------------------------------------
   onNodeExpandDirect(Results:SparqlResponse)
   {
@@ -719,19 +858,30 @@ export class CSVisualisationComponent
       // Add nodes for subject and object
       if(this.cy.getElementById(result['obj']['value']).length==0)
       {
+        var nodeLabel = "";
+        var splitUri:string[] =[];
+        splitUri = result['obj']['value'].split('/');
+
         if( result['objType'] == undefined)
           result['objType']={'type':'uri','value':'default'};
-        var splitUri:string[] =[];
-        var splitType:string[] =[];
-        splitUri = result['obj']['value'].split('/');
-         this.cy.add({data:{id:result['obj']['value'], label:splitUri.pop()!.replace(/\./g, '.\u200b')+"\n("+splitUri.pop()+")", tagged:false}})
+
+        if( result['objLabel'] == undefined)
+          {
+            nodeLabel = splitUri.pop()!.replace(/\./g, '.\u200b')+"\n("+splitUri.pop()+")";
+          }
+          else
+            nodeLabel = result['objLabel']['value'].replace(/\./g, '.\u200b')
+
+
+//         this.cy.add({data:{id:result['obj']['value'], label:splitUri.pop()!.replace(/\./g, '.\u200b')+"\n("+splitUri.pop()+")", tagged:false}})
+         this.cy.add({data:{id:result['obj']['value'], label: nodeLabel, tagged:false}})
       .style( (this.nodeStyels[result['objType']['value'].split('/').pop()!] || this.nodeStyels["Default"]) );
  //      .style({'shape':'barrel', 'background-color':'#aac','text-wrap':'wrap'});
       }
 
-      if(this.cy.getElementById(this.cy.$(':selected').data('id')+result['pred']['value']+ result['obj']['value']).length==0)
-        this.cy.add({data:{id:this.cy.$(':selected').data('id')+result['pred']['value']+ result['obj']['value'],
-            source:this.cy.$(':selected').data('id'),
+      if(this.cy.getElementById(this.currentContextNode.data('id')+result['pred']['value']+ result['obj']['value']).length==0)
+        this.cy.add({data:{id:this.currentContextNode.data('id')+result['pred']['value']+ result['obj']['value'],
+            source:this.currentContextNode.data('id'),
             target:result['obj']['value'],
             label:result['pred']['value'].split('/').pop()
             }}).style({'width':'1'});
@@ -750,19 +900,33 @@ export class CSVisualisationComponent
       // Add nodes for subject and object
       if(this.cy.getElementById(result['obj']['value']).length==0)
       {
-        if( result['objType'] == undefined)
-          result['objType']={'type':'uri','value':'default'};
+        var nodeLabel = "";
         var splitUri:string[] =[];
         splitUri = result['obj']['value'].split('/');
-         this.cy.add({data:{id:result['obj']['value'], label:splitUri.pop()!.replace(/\./g, '.\u200b')+"\n("+splitUri.pop()+")", tagged:false}})
-        .style( (this.nodeStyels[result['objType']['value'].split('/').pop()!] || this.nodeStyels["Default"]) );
+
+
+        if( result['objType'] == undefined)
+          result['objType']={'type':'uri','value':'default'};
+
+
+        if( result['objLabel'] == undefined)
+        {
+          nodeLabel = splitUri.pop()!.replace(/\./g, '.\u200b')+"\n("+splitUri.pop()+")";
+        }
+        else
+          nodeLabel = result['objLabel']['value'].replace(/\./g, '.\u200b')
+
+
+//         this.cy.add({data:{id:result['obj']['value'], label:splitUri.pop()!.replace(/\./g, '.\u200b')+"\n("+splitUri.pop()+")", tagged:false}})
+         this.cy.add({data:{id:result['obj']['value'], label: nodeLabel, tagged:false}})
+      .style( (this.nodeStyels[result['objType']['value'].split('/').pop()!] || this.nodeStyels["Default"]) );
       //  .style({'shape':'barrel', 'background-color':'#aac'});
       }
 
-      if(this.cy.getElementById(result['obj']['value'] + result['pred']['value'] + this.cy.$(':selected').data('id') ).length==0)
-        this.cy.add({data:{id:result['obj']['value'] + result['pred']['value'] + this.cy.$(':selected').data('id'),
+      if(this.cy.getElementById(result['obj']['value'] + result['pred']['value'] + this.currentContextNode.data('id') ).length==0)
+        this.cy.add({data:{id:result['obj']['value'] + result['pred']['value'] + this.currentContextNode.data('id'),
             source:result['obj']['value'],
-            target:this.cy.$(':selected').data('id'),
+            target:this.currentContextNode.data('id'),
             label:result['pred']['value'].split('/').pop()
             }}).style({'width':'1'});
     } );
@@ -771,16 +935,156 @@ export class CSVisualisationComponent
     this.cy.zoom(2);
     this.cy.layout(this.elkoptions).run();
   }  
-  //----------------------------------------------------------------------------------------------------
-  onRightMouseClick(evt)
-  {
 
-    console.log("right click")
+  //----------------------------------------------------------------------------------------------------
+  onTap(evt)
+  {
     if(!evt.target.data('tagged'))
+    {
       evt.target.style({'outline-width':'4','outline-offset':'8','outline-color':'#c08'});
+      this.taggedNodes.push(evt.target);
+    }
     else
+    {
       evt.target.style({'outline-width':'0','outline-offset':'4','outline-color':'#0cc'});
+      this.taggedNodes.splice(this.taggedNodes.indexOf(evt.target),1);
+    }
     evt.target.data('tagged', !evt.target.data('tagged'));
+
+    this.taggedNodes.forEach( elem=>{ console.log(' tagged:'+elem.data('id'))})
+
+    this.multiRelSearch = (this.taggedNodes.length > 1);
+  }
+
+  //----------------------------------------------------------------------------------------------------
+  onMultiRelExpand()
+  {
+    var prefix = this.selectValue =="Organisation" || this.selectValue =="TimeInterval" ? "<https://w3id.org/hacid/onto/top-level/":"<https://w3id.org/hacid/onto/ccso/";
+    var classURI = prefix +this.selectValue+">";
+    var filterInstances = '';
+
+    this.taggedNodes.forEach( elem=>{
+      filterInstances += '<'+elem.data('id')+'>';
+      if( this.taggedNodes.indexOf(elem)< (this.taggedNodes.length-1) )
+        filterInstances += ',';
+      });
+
+    var query=`
+      SELECT distinct ?sub (count (distinct ?obj) as ?numLinks) (GROUP_CONCAT(DISTINCT ?subLabel; separator=", ") AS ?subLabels) WHERE {
+      {
+        ?sub a `+ classURI +`  .
+        ?sub ?prop ?obj .
+        FILTER (?obj in (`+ filterInstances
+        +
+        ` ))
+         OPTIONAL { ?sub rdfs:label ?subLabel }
+      }
+      UNION
+      {
+        ?sub a `+ classURI +`  .
+        ?obj ?prop ?sub .
+        FILTER (?obj in (`+ filterInstances
+        +
+        ` ))
+         OPTIONAL { ?sub rdfs:label ?subLabel }
+      }
+      } 
+      GROUP BY ?sub
+      HAVING (count(distinct ?obj) = `+ this.taggedNodes.length +`)
+      LIMIT 10 `;
+
+
+    this.sparqlService.querySparqlEndpoint(this.endpoint, query )
+        .subscribe({
+          next: (data) => this.expandMultiNodeRelations(data),
+          error: (error)=> console.error('There was an error!', error)
+    });
+
+  }
+
+  expandMultiNodeRelations(Results:SparqlResponse)
+  {
+    var sparqlResults = Results.results.bindings;
+    
+    sparqlResults.forEach(result => {
+
+      var newNodeURI = result['sub']['value'];
+      // Add obj node
+      if(this.cy.getElementById(newNodeURI).length==0)
+      {
+        var nodeLabel = "";
+        var splitUri:string[] =[];
+        splitUri = newNodeURI.split('/');
+
+        if( result['subLabels'] == undefined)
+          {
+            nodeLabel = splitUri.pop()!.replace(/\./g, '.\u200b')+"\n("+splitUri.pop()+")";
+          }
+          else
+            nodeLabel = result['subLabels']['value'].replace(/\./g, '.\u200b')
+
+
+//         this.cy.add({data:{id:result['obj']['value'], label:splitUri.pop()!.replace(/\./g, '.\u200b')+"\n("+splitUri.pop()+")", tagged:false}})
+        this.cy.add({data:{id:newNodeURI, label: nodeLabel, tagged:false}})
+          .style( (this.nodeStyels[this.selectValue] || this.nodeStyels["Default"]) );
+ //      .style({'shape':'barrel', 'background-color':'#aac','text-wrap':'wrap'});
+      }
+
+      var filterInstances = '';
+      this.taggedNodes.forEach( elem=>{
+        filterInstances += '<'+elem.data('id')+'>';
+        if( this.taggedNodes.indexOf(elem)< (this.taggedNodes.length-1) )
+          filterInstances += ',';
+        });
+      var query=`
+          SELECT distinct ?prop ?direction ?obj ?objLabel WHERE {
+            { 
+                <`+ newNodeURI +`> ?prop ?obj .
+                <`+ newNodeURI +`> rdfs:label ?objLabel .
+                FILTER (?obj in  (`+ filterInstances +` ))
+                BIND( "Direct" as ?direction).
+            }
+            UNION
+            {
+                ?obj ?prop <`+ newNodeURI +`> .
+                <`+ newNodeURI +`> rdfs:label ?objLabel .
+                FILTER (?obj in (`+ filterInstances +` ))
+                BIND( "Inverse" as ?direction).
+            }
+          } 
+          LIMIT 10 `;
+
+
+      this.sparqlService.querySparqlEndpoint(this.endpoint, query )
+        .subscribe({
+          next: (data) =>{
+            var sparqlResults = data.results.bindings;
+            sparqlResults.forEach(result => {   
+            
+            var relSource = result['direction']['value']=='Direct'? newNodeURI : result['obj']['value'] ;
+            var relTarget = result['direction']['value']=='Direct'? result['obj']['value'] : newNodeURI ;
+
+            var newRelationId = relSource + result['prop']['value'] + relTarget;
+
+            if(this.cy.getElementById(newRelationId).length==0)
+            {
+              this.cy.add({data:{
+                    id: newRelationId,
+                    source: relSource,
+                    target: relTarget,
+                    label: result['prop']['value'].split('/').pop()
+              }}).style({'width':'1'});
+            }
+            this.cy.center();
+            this.cy.zoom(2);
+            this.cy.layout(this.elkoptions).run();   
+          });
+          },
+          error: (error)=> console.error('There was an error!', error)
+      });
+    });
+
+
   }
 
   //----------------------------------------------------------------------------------------------------

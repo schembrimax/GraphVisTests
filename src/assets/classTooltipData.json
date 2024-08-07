@@ -1,0 +1,14 @@
+{
+    "stateOptions": [
+      {"name": "Model", "value": "Model", "tooltip":" Model "},
+      {"name": "Simulation", "value": "Simulation", "tooltip":" Simulation "},
+      {"name": "Dataset", "value": "Dataset", "tooltip":" Dataset "},
+      {"name": "Organisation", "value": "Organisation", "tooltip":" Organisation "},
+      {"name": "GGCP Scenario", "value": "GreenhouseGasConcentrationPathway", "tooltip":" GGCP Scenario "},
+      {"name": "Spatial Region", "value": "SpatialRegion", "tooltip":" Spatial Region "},
+      {"name": "Time Duration", "value": "TimeDuration", "tooltip":" Time Duration "},
+      {"name": "Time Interval", "value": "TimeInterval", "tooltip":" Time Interval "},
+      {"name": "Variable", "value": "Variable", "tooltip":" Variable "}
+    ],
+    "showDelay":500
+  }

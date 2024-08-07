@@ -1,13 +1,11 @@
-<div class="topology-container">
+  <div class="topology-container">
+    <img src="assets/HACID_Logo_inverted.svg" style="position: absolute; height: 60px; left: 20px; top: 20px; z-index: 1000;">
 
-  <img src="assets/HACID_Logo_inverted.svg" style="position: absolute; height: 60px; left: 20px; top: 20px; z-index: 1000;">
-
-  <div [ngStyle]="{'position':'fixed','z-index':'1000','top':'40px','left':'30%','width':'40%'}">
-
-    <span [style]="{'display':'grid', 'grid-template-columns':'1fr 30px'}">
-      <span class="p-float-label p-fluid  " >
-      
-        <p-autoComplete #autocomplete
+    <!-- Search bar -->
+    <div [ngStyle]="{'position':'absolute','z-index':'1000','top':'40px','left':'30%','width':'40%'}">
+      <span [style]="{'display':'grid', 'grid-template-columns':'1fr 30px'}">
+        <span class="p-float-label p-fluid  " >
+          <p-autoComplete #autocomplete
             inputId="float-label"
             field="name"
             [(ngModel)]="autoCompleteTexts"
@@ -17,19 +15,18 @@
             (completeMethod)="search($event)"
             [multiple]="true"
             (blur)="onBlur($event.target)"
-            (onFocus)="onFocus"
+            (onFocus)="onFocus()"
             (onKeyUp)="onKeyUp($event)"
             (onSelect)="onSelectClass($event)"
             (onUnselect)="onUnselect($event)"
-            >
-        </p-autoComplete>
-
-        <label for="float-label">Search {{selectValue}}...</label>
+           >
+          </p-autoComplete>
+          <label for="float-label">Search {{selectValue}}...</label>
+        </span>
+        <p-button *ngIf="multiRelSearch" [style]="{'margin-left':'5px'}" (onClick)="onMultiRelExpand()"   > >> </p-button>
       </span>
-      <p-button *ngIf="multiRelSearch" [style]="{'margin-left':'5px'}" (onClick)="onMultiRelExpand()"   > >> </p-button>
-    </span>
-
-    <p-selectButton [ngStyle]="{'text-align':'center','padding':'3px'}"
+      <!-- buttons to select ontology classes -->
+      <p-selectButton [ngStyle]="{'text-align':'center','padding':'2px'}"
         [options]="stateOptions"
         [(ngModel)]="selectValue"
         [multiple]="false"
@@ -37,32 +34,44 @@
         optionValue="value"
         [allowEmpty]="false" 
         label="Model (Default)"
-        (onOptionClick)="buttonSelectClick()"
-    />
+        (onOptionClick)="buttonSelectClick()">
+
+        <ng-template let-item pTemplate="item" >
+            <div tooltipPosition='bottom' [showDelay]="classTooltipData['showDelay']" class="class-select" [pTooltip]="item.tooltip" >{{item.name}}</div>
+        </ng-template>
+      </p-selectButton>
 
 
+    </div>
+
+    <app-radial-menu *ngIf="radialVisible"></app-radial-menu>
+
+   
+    <p-toast position="center" />
+
+  <div class="floating_element" oncontextmenu="return false;"  *ngIf="isLoadingWheelVisible"
+  [ngStyle]="{'left':loadingWheelLeft, 'top':loadingWheelTop}">
+    <p-progressSpinner 
+  
+    strokeWidth="3" 
+    animationDuration="0.8s" />
   </div>
-
-  <app-radial-menu *ngIf="radialVisible"></app-radial-menu>
-
-  <!--
-  <div #nodeMenu id="nodeMenu"
-        
-        [style]="{'padding':'0'}"
-        [ngStyle]="{'left':nodeMenuLeft, 'top':nodeMenuTop, 'background-color':'transparent', 'text-align':'center','width':'30px'}">
-        <p-speedDial #speedMenu [model]="nodeMenuItems" 
-            showIcon="pi pi-bars" 
-            direction="right"
-            [rotateAnimation]="false">
-        </p-speedDial>
-  </div>
--->
-
-
+    <!--
+    <div #nodeMenu id="nodeMenu"
+          
+          [style]="{'padding':'0'}"
+          [ngStyle]="{'left':nodeMenuLeft, 'top':nodeMenuTop, 'background-color':'transparent', 'text-align':'center','width':'30px'}">
+          <p-speedDial #speedMenu [model]="nodeMenuItems" 
+              showIcon="pi pi-bars" 
+              direction="right"
+              [rotateAnimation]="false">
+          </p-speedDial>
+    </div>
+  -->
   <div  #contextMenu id="contextMenu"
         *ngIf="isContextMenuVisible"
         [style]="{'padding':'0'}"
-        [ngStyle]="{'left':menuLeft, 'top':menuTop, 'background-color':'transparent', 'text-align':'center','width':'300px'}">
+        [ngStyle]="{'left':menuLeft, 'top':menuTop, 'background-color':'transparent', 'text-align':'center','width':'400px','font-stretch':'condensed'}">
 
 <!--
         <div >
@@ -82,7 +91,11 @@
     <p-button label="Expand" [style]="{'width':'100%','background-color':'rgb(111 196 221)'}" (onClick)="onExpand()"></p-button> 
   </div>
 
-
+ 
+      
   <div id="cy" #cy  style=" background: radial-gradient(circle, rgb(240, 240, 240) 0%, rgb(166, 218, 224) 100%); "></div>
   
 </div>
+
+
+

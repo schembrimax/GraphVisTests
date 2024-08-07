@@ -15,7 +15,15 @@ import { AutoComplete } from 'primeng/autocomplete';
 import { SpeedDialModule } from 'primeng/speeddial';
 import { SelectButtonModule} from 'primeng/selectbutton';
 import { RadialMenuComponent } from '../radial-menu/radial-menu.component';
+import { TooltipModule } from 'primeng/tooltip';
 import { ChipsModule} from 'primeng/chips';
+import { SplitterModule } from 'primeng/splitter';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { ToastModule} from 'primeng/toast'
+import { MessageService } from 'primeng/api';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import * as classTooltipDataJson from '../../assets/classTooltipData.json';
+
 
 import cytoscape, { BaseLayoutOptions } from 'cytoscape';
 import cola from 'cytoscape-cola';
@@ -46,21 +54,22 @@ interface SparqlResponse {
   imports: [ HttpClientModule, CommonModule, ContextMenuModule,
     MenuModule, ListboxModule, FormsModule, ButtonModule, PanelModule,
     AutoCompleteModule, SpeedDialModule, RadialMenuComponent, SelectButtonModule,
-    ChipsModule ],
+    ChipsModule, TooltipModule, SplitterModule, ConfirmDialogModule, ToastModule,
+     ProgressSpinnerModule],
   templateUrl: './cs-visualisation.component.html',
-  styleUrl: './cs-visualisation.component.css'
+  styleUrl: './cs-visualisation.component.css',
+  providers:[MessageService]
 })
-
-
 
 export class CSVisualisationComponent
 {
-
   @ViewChild('cy') cytoElem: ElementRef;
   @ViewChild('contextMenu',{static:false}) contextMenu: ElementRef;
   //@ViewChild('speedMenu') speedMenu: ElementRef;
   @ViewChild('autocomplete') autocomplete: AutoComplete;
   @Output() optionSelected= new EventEmitter<string>();
+
+  observer : IntersectionObserver;
 
   // context menu
   isContextMenuVisible:boolean=false;
@@ -71,6 +80,14 @@ export class CSVisualisationComponent
   currentContextNode :any;
 
   cy: cytoscape.Core;
+
+  classTooltipData:any = classTooltipDataJson;
+  items = [
+    { label: 'Item 1', value: '1', tooltip: 'Tooltip for Item 1' },
+    { label: 'Item 2', value: '2', tooltip: 'Tooltip for Item 2' },
+    { label: 'Item 3', value: '3', tooltip: 'Tooltip for Item 3' }
+  ];
+
 
   radialVisible:boolean = false;
 
@@ -87,6 +104,12 @@ export class CSVisualisationComponent
     { icon: 'pi pi-user', command: () => {this.isContextMenuVisible=true;} },
   // Add more items as needed
   ];
+
+  // loading wheel
+  isLoadingWheelVisible=false;
+  loadingWheelTop = '40px';
+  loadingWheelLeft = '40px';
+
 
   // used to store autocompelte suggestions
   suggestions:any[] =[];
@@ -147,6 +170,25 @@ export class CSVisualisationComponent
       'font-size':'10',
       'border-style':'solid',
       "border-color":'#505957',//#267
+      }
+    ,
+    "NodeGroup": {
+      //'background-color': '#c3e0d9',//#29a
+      'background-image':'assets/NodeGroupIcon.png',
+      'background-opacity':0,
+      'background-fit':'contain', 
+      'label': 'data(label)',
+      'text-outline-color':'#fff',
+      'text-outline-width':'0.7',
+      'width':'55',
+      'height':'55',
+      'color':'#444',
+      'font-weight':'bold',
+      'font-family':'serif',
+      'font-size':'10',
+     // 'border-style':'solid',
+     // "border-color":'#505957',//#267
+      "border-width":0
       }
     ,
     "Simulation": {
@@ -276,14 +318,15 @@ export class CSVisualisationComponent
       "border-color":'#684726',//#267
 
      }
- 
-
     }
 
   endpoint = 'https://semantics.istc.cnr.it/hacid/sparql';
 
    //----------------------------------------------------------------------------------------------------
-   constructor(private primengConfig: PrimeNGConfig, private sparqlService:SparqlService, private changeDetectorRef:ChangeDetectorRef)
+   constructor( private primengConfig: PrimeNGConfig,
+                private sparqlService:SparqlService,
+                private changeDetectorRef:ChangeDetectorRef,
+                private messageService:MessageService)
   {
 
   }
@@ -300,6 +343,18 @@ export class CSVisualisationComponent
     // override the default on enter behaviour that hides the dropdown
     this.autocomplete.onEnterKey = (event:any)=>{ };
     this.initialise([]);
+
+    this.stateOptions = this.classTooltipData["stateOptions"];
+    console.log(" test json ="+ this.classTooltipData[this.stateOptions[0].name])
+
+    this.observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          console.log('Component is visible in the viewport');
+          this.isLoadingWheelVisible = false;
+        }
+      });
+    });
 
   }
 
@@ -364,14 +419,19 @@ export class CSVisualisationComponent
       wheelSensitivity:0.2
     });
 
+    // Following lines define what happens when we interact with nodes and in particula
+
+    // right mouse button click, also called context tap
     this.cy.on('cxttap','node', this.onContextTap.bind(this));  // bind(this) is important because give the context to the callback function
+
+    // left mouse button click, also called tap
     this.cy.on('tap', 'node', this.onTap.bind(this));
+
     this.cy.on('mouseover', this.onMouseOver.bind(this));
     this.cy.on('mouseout', this.onMouseOut.bind(this));
     this.cy.on('tap', this.onTappingGeneral.bind(this));
     this.cy.on('cxttap',this.onTappingGeneral.bind(this));
-    this.cy.maxZoom(2);
-    
+    this.cy.maxZoom(2);    
   }
 
   //----------------------------------------------------------------------------------------------------
@@ -433,14 +493,14 @@ export class CSVisualisationComponent
   }
   
   //----------------------------------------------------------------------------------------------------
-  /*         An element has been selected from the dropdown list of the search box
+  /*     Called when an element has been selected from the dropdown list of the search box
    */
   onSelectClass(event)
   {
     //console.log(" Disorder: "+event.value['name']+'  uri:'+event.value['uri']);
     this.addInstance(event);
     this.autoCompleteTexts.pop();
- 
+
   }
  
   /*----------------------------------------------------------------------------------------------------
@@ -449,12 +509,10 @@ export class CSVisualisationComponent
    *  - id: the node id
    *  - label: the node label is what is visualized in the interface
    *  - tagged: a boolean indicating the tagging status of the node
-   *  - 
+   *  - type: type of node. At the moment can be simple or group
    */
-
   addInstance( kg_instance)
   {
-
     if(this.cy.getElementById(kg_instance.value['uri']).length==0)
     {
       this.cy.add({data:{ 
@@ -463,6 +521,7 @@ export class CSVisualisationComponent
         dirRels:undefined,
         invRels:undefined,
         tagged:false,
+        type:'simple'
 
         }
       }).style(this.nodeStyels[this.selectValue]);
@@ -478,9 +537,15 @@ export class CSVisualisationComponent
     }
   }
 
-  //----------------------------------------------------------------------------------------------------
+  /*----------------------------------------------------------------------------------------------------
+    Right mouse button click.
+    This action show the context menu with all the relations of a node.
+    Relations can be selected and expanded with the "expand" button
+    Clicking the expand button will call the onExpand() function
+  */
   onContextTap(evt)
   {
+
     var node=evt.target;
 
     this.expandableRelations = [];
@@ -489,30 +554,48 @@ export class CSVisualisationComponent
     if(node!== this.cy)
     {
       this.currentContextNode = node;
-      this.contextMenuHeader = '\u{1F517} '+ (node.data('label').length >25 ? node.data('label').substring(0,25)+"...": node.data('label'));
-      if( node.data('dirRels')==undefined )
+      if(this.currentContextNode.data('type')=='simple')
       {
-        this.addExpandableRelations(
-              node.data('id'),
-              ()=>{
-                this.expandableRelations = node.data('dirRels')?.slice().concat(node.data('invRels')?.slice()  );
-                this.showContextMenu(node.renderedPosition('x'), node.renderedPosition('y'));         
-        });
+        this.contextMenuHeader = '\u{1F517} '+ (node.data('label').length >25 ? node.data('label').substring(0,25)+"...": node.data('label'));
+        if( node.data('dirRels')==undefined )
+        {
+          this.addExpandableRelations(
+                node.data('id'),
+                ()=>{
+                  this.expandableRelations = node.data('dirRels')?.slice().concat(node.data('invRels')?.slice()  );
+                  this.showNodeRelationsCtxMenu(node.renderedPosition('x'), node.renderedPosition('y'));         
+          });
+        }
+        else
+        {
+          this.expandableRelations = node.data('dirRels')?.slice().concat(node.data('invRels')?.slice()  );
+          this.showNodeRelationsCtxMenu(evt.originalEvent.offsetX , evt.originalEvent.offsetY);
+        }
       }
+      // Group node contex menu visualisation
       else
       {
-        this.expandableRelations = node.data('dirRels')?.slice().concat(node.data('invRels')?.slice()  );
-        this.showContextMenu(evt.originalEvent.offsetX , evt.originalEvent.offsetY);
-      }
+        this.showNodeRelationsCtxMenu(evt.originalEvent.offsetX , evt.originalEvent.offsetY);
 
+        let relations:any[]=[]
+        node.data('data').forEach(element => {
+          relations.push({  "name":  element['obj']['value'],
+            "uri":element['pred']['value'],
+            "direct":true,
+            "expanded":false
+          });
+        });
+        this.expandableRelations = relations
+      }
     }
   }
+
   //----------------------------------------------------------------------------------------------------
 
-  showContextMenu(posx, posy)
+  showNodeRelationsCtxMenu(posx, posy)
   {
-
     this.isContextMenuVisible = true;
+    //makes the context menu visible immediately by forcing change detection
     this.changeDetectorRef.detectChanges();
 
     var new_posy = (posy + this.contextMenu.nativeElement.offsetHeight) > this.cytoElem.nativeElement.offsetHeight ?
@@ -526,6 +609,10 @@ export class CSVisualisationComponent
     this.menuLeft = new_posx+'px';    
     this.menuTop = new_posy+'px';
     this.menuHeight = 24+ 46*4+'px';
+//    this.isLoadingWheelVisible=true;
+//    this.loadingWheelLeft = this.menuLeft;
+//    this.loadingWheelTop = this.menuTop;
+
   }
 
   //----------------------------------------------------------------------------------------------------
@@ -533,7 +620,6 @@ export class CSVisualisationComponent
   onContextHeaderClick()
   {
     window.open( this.currentContextNode.data('id'), '_blank');
-
   }
 
   //----------------------------------------------------------------------------------------------------
@@ -548,9 +634,10 @@ export class CSVisualisationComponent
     PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
     PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
     
-    SELECT distinct ?pred
+    SELECT distinct ?pred ?objType
     WHERE {
       <`+ instance +`> ?pred ?obj .
+      OPTIONAL{?obj rdf:type ?objType} .
       FILTER(?pred != rdf:type) .
       FILTER(?pred != rdfs:label) .
     }`;
@@ -560,9 +647,10 @@ export class CSVisualisationComponent
     PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
     PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
    
-    SELECT distinct ?pred   
+    SELECT distinct ?pred ?objType
     WHERE {
      ?obj ?pred <`+ instance +`>.
+     OPTIONAL{?obj rdf:type ?objType} .
      FILTER(?pred != rdf:type) .
      FILTER(?pred != rdfs:label) .
     }`;
@@ -579,20 +667,40 @@ export class CSVisualisationComponent
           let inverseRelations:any[]=[]
 
           data.directRels.results.bindings.forEach(result => {
-            console.log(" dRel : "+ result['pred']['value'])
-            directRelations.push({  "name": "-> " + result['pred']['value'].split('/').pop(),
+            console.log(" dRel : "+ result['pred']['value']);
+            var objType = ""
+            var objTypeValue = ""
+            
+            if(result['objType']!==undefined)
+            {
+              objTypeValue = result['objType']['value'] ;
+              objType ="("+ objTypeValue.split('/').pop()+")";
+            }
+
+            directRelations.push({  "name": "-> " + result['pred']['value'].split('/').pop()+objType,
                                     "uri":result['pred']['value'],
                                     "direct":true,
-                                    "expanded":false
+                                    "expanded":false,
+                                    "targetType":objTypeValue
                                   });
           } );
 
           data.inverseRels.results.bindings.forEach(result => {
             console.log(" iRel : "+ result['pred']['value'])
-            inverseRelations.push({ "name": "<- " + result['pred']['value'].split('/').pop(),
+            var objType = ""
+            var objTypeValue = ""
+            
+            if(result['objType']!==undefined)
+            {
+              objTypeValue = result['objType']['value'] ;
+              objType =" ("+ objTypeValue.split('/').pop()+")";
+            }
+
+            inverseRelations.push({ "name": "<- " + result['pred']['value'].split('/').pop()+objType,
                                     "uri":result['pred']['value'],
                                     "direct":false,
-                                    "expanded":false
+                                    "expanded":false,
+                                    "targetType":objTypeValue
                                   });
           } );
 
@@ -642,111 +750,10 @@ export class CSVisualisationComponent
     }
   }
 
-
   /*----------------------------------------------------------------------------------------------------
    *  Expands selected relations listed in the selectedExpRel array 
    */
   onExpand()
-  {
-    var directRel:any[] = [];
-    var inverseRel:any[] = [];
-
-    // sort relations based on type (direct, inverse)
-    this.selectedExpRel.forEach( el=>{
-      if(el['direct'])
-        directRel.push(el);
-      else
-        inverseRel.push(el)
-    });
-
-   //*****************************************************************/
-    var queryDirectRels = `
-      PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-      PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-      
-      SELECT distinct ?pred ?obj ?objType ?objLabel
-      WHERE {
-        <`+this.currentContextNode.data('id')+`> ?pred ?obj .
-        OPTIONAL{?obj rdfs:label ?objLabel}.
-        OPTIONAL{ ?obj rdf:type ?objType 
-                  FILTER(lang(?objLabel) = "en-gb" || lang(?objLabel) = "en-us" || lang(?objLabel) = "en").
-          }.
-        FILTER(?pred != rdf:type) .
-        FILTER(?pred != rdfs:label) .`
-        ;
-    
-    if(directRel.length>0)
-    {
-      queryDirectRels+= ' FILTER(';
-
-      directRel.forEach(el=>{
-        queryDirectRels+=' ?pred=<'+ el['uri'] + '>';
-          if(el!=directRel[directRel.length-1])
-            queryDirectRels+=' || ';
-      });
-    
-      queryDirectRels+= ') .';
-    }
-
-    queryDirectRels+='} LIMIT 10';
-
-    console.log(" Query="+ queryDirectRels);
-
-
-    //*****************************************************************/
-    var queryInverseRels = `
-    PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-    
-    SELECT distinct ?pred ?obj ?objType ?objLabel
-    WHERE {
-      ?obj ?pred <`+this.currentContextNode.data('id')+`> .
-      OPTIONAL{?obj rdfs:label ?objLabel}.
-      OPTIONAL{ ?obj rdf:type ?objType 
-                FILTER(lang(?objLabel) = "en-gb" || lang(?objLabel) = "en-us" || lang(?objLabel) = "en").
-        }.
-      FILTER(?pred != rdf:type) .
-      FILTER(?pred != rdfs:label) .`
-      ;
- 
-    if(inverseRel.length>0)
-    {
-      queryInverseRels+= ' FILTER(';
-
-      inverseRel.forEach(el=>{
-        queryInverseRels+=' ?pred=<'+ el['uri'] + '>';
-          if(el!=inverseRel[inverseRel.length-1])
-            queryInverseRels+=' || ';
-      });
-    
-      queryInverseRels+= ') .';
-    }
-
-    queryInverseRels+='} LIMIT 10';
-
-    console.log(" Query="+ queryInverseRels);
-
-    if(directRel.length>0)
-      this.sparqlService.querySparqlEndpoint(this.endpoint, queryDirectRels )
-        .subscribe({
-          next: (data) => this.onNodeExpandDirect(data),
-          error: (error)=> console.error('There was an error!', error)
-        });
-
-    if(inverseRel.length>0)
-      this.sparqlService.querySparqlEndpoint(this.endpoint, queryInverseRels )
-      .subscribe({
-        next: (data) => this.onNodeExpandInverse(data),
-        error: (error)=> console.error('There was an error!', error)
-      });
-
-    this.isContextMenuVisible = false;
-  }
-
-    /*----------------------------------------------------------------------------------------------------
-   *  Expands selected relations listed in the selectedExpRel array 
-   */
-  onExpand2()
   {
     this.isContextMenuVisible = false;  // hide context menu
 
@@ -760,7 +767,9 @@ export class CSVisualisationComponent
             
             SELECT distinct ?pred ?obj ?objType ?objLabel
             WHERE {
-              <`+this.currentContextNode.data('id')+`> <`+ el['uri']+`> ?obj .
+              <`+this.currentContextNode.data('id')+`> <`+ el['uri']+`> ?obj .`+
+              (el['targetType']!=""?  (  ` ?obj rdf:type <`+ el['targetType']+ `>`): ``)
+              +`
               OPTIONAL{?obj rdfs:label ?objLabel}.
               OPTIONAL{ ?obj rdf:type ?objType 
                         FILTER(lang(?objLabel) = "en-gb" || lang(?objLabel) = "en-us" || lang(?objLabel) = "en").}.
@@ -770,7 +779,7 @@ export class CSVisualisationComponent
 
         this.sparqlService.querySparqlEndpoint(this.endpoint, queryDirectRels )
             .subscribe({
-              next: (data) => this.onNodeExpandDirect(data),
+              next: (data) => this.onNodeExpandRelation(data,{"relation":el, "query":queryDirectRels}),
               error: (error)=> console.error('There was an error!', error)
         });
       }
@@ -783,7 +792,9 @@ export class CSVisualisationComponent
             
             SELECT distinct ?pred ?obj ?objType ?objLabel
             WHERE {
-              ?obj   <`+el['uri'] +`> <`+this.currentContextNode.data('id')+`> .
+              ?obj   <`+el['uri'] +`> <`+this.currentContextNode.data('id')+`> .`+
+              (el['targetType']!=""?  (  ` ?obj rdf:type <`+ el['targetType']+`>`): ``)
+              +`
               OPTIONAL{?obj rdfs:label ?objLabel}.
               OPTIONAL{ ?obj rdf:type ?objType 
                         FILTER(lang(?objLabel) = "en-gb" || lang(?objLabel) = "en-us" || lang(?objLabel) = "en").}.
@@ -793,148 +804,180 @@ export class CSVisualisationComponent
 
         this.sparqlService.querySparqlEndpoint(this.endpoint, queryInverseRels )
             .subscribe({
-              next: (data) => this.onNodeExpandInverse(data),
+              next: (data) => this.onNodeExpandRelation(data,{"relation":el,"query":queryDirectRels}),
               error: (error)=> console.error('There was an error!', error)
         });      
       }
     });
-
   }
 
+  //----------------------------------------------------------------------------------------------------
+  groupBy<T, K extends keyof T>(array: T[], key: K): Record<T[K] extends number | string | symbol ? T[K] : string, T[]> {
+    return array.reduce((accumulator, currentValue) => {
+      const groupKey = currentValue[key];
+  
+      // Ensure the groupKey is a valid key type (string, number, or symbol)
+      const keyString = groupKey as T[K] extends number | string | symbol ? T[K] : string;
+  
+      // Initialize the group if it doesn't exist
+      if (!accumulator[keyString]) {
+        accumulator[keyString] = [];
+      }
+  
+      // Add the current value to the group
+      accumulator[keyString].push(currentValue);
+  
+      return accumulator;
+    }, {} as Record<T[K] extends number | string | symbol ? T[K] : string, T[]>);
+  }
 
   //----------------------------------------------------------------------------------------------------
   onNodeExpandRelation(Results:SparqlResponse, expandedRelation:any)
   {
     var expandedNodeURI = this.currentContextNode.data('id');
-    var expandedRelationURI = expandedRelation['uri'];
+    var expandedRelationURI = expandedRelation['relation']['uri'];
+    var targetNodeType = expandedRelation['relation']['targetType'];
     var sparqlResults = Results.results.bindings;
-    sparqlResults.forEach(result => {
-      // Add obj node
-      if(this.cy.getElementById(result['obj']['value']).length==0)
-      {
-        var nodeLabel = "";
-        var splitUri:string[] =[];
-        splitUri = result['obj']['value'].split('/');
 
-        if( result['objType'] == undefined)
-          result['objType']={'type':'uri','value':'default'};
-
-        if( result['objLabel'] == undefined)
-          {
-            nodeLabel = splitUri.pop()!.replace(/\./g, '.\u200b')+"\n("+splitUri.pop()+")";
-          }
-          else
-            nodeLabel = result['objLabel']['value'].replace(/\./g, '.\u200b')
-
-
-//         this.cy.add({data:{id:result['obj']['value'], label:splitUri.pop()!.replace(/\./g, '.\u200b')+"\n("+splitUri.pop()+")", tagged:false}})
-         this.cy.add({data:{id:result['obj']['value'], label: nodeLabel, tagged:false}})
-      .style( (this.nodeStyels[result['objType']['value'].split('/').pop()!] || this.nodeStyels["Default"]) );
- //      .style({'shape':'barrel', 'background-color':'#aac','text-wrap':'wrap'});
-      }
-
-      // add relation
-      var newRelationId = this.currentContextNode.data('id')+result['pred']['value']+ result['obj']['value'];
-      if(this.cy.getElementById(newRelationId).length==0)
-      {
-        this.cy.add({data:{id: newRelationId,
-            source:this.currentContextNode.data('id'),
-            target:result['obj']['value'],
-            label:result['pred']['value'].split('/').pop()
-            }}).style({'width':'1'});
-      }
-    });
-
-    this.cy.center();
-    this.cy.zoom(2);
-    this.cy.layout(this.elkoptions).run();
-  }
-
-  //----------------------------------------------------------------------------------------------------
-  onNodeExpandDirect(Results:SparqlResponse)
-  {
-    var sparqlResults = Results.results.bindings;
-    sparqlResults.forEach(result => {
-      // Add nodes for subject and object
-      if(this.cy.getElementById(result['obj']['value']).length==0)
-      {
-        var nodeLabel = "";
-        var splitUri:string[] =[];
-        splitUri = result['obj']['value'].split('/');
-
-        if( result['objType'] == undefined)
-          result['objType']={'type':'uri','value':'default'};
-
-        if( result['objLabel'] == undefined)
-          {
-            nodeLabel = splitUri.pop()!.replace(/\./g, '.\u200b')+"\n("+splitUri.pop()+")";
-          }
-          else
-            nodeLabel = result['objLabel']['value'].replace(/\./g, '.\u200b')
-
-
-//         this.cy.add({data:{id:result['obj']['value'], label:splitUri.pop()!.replace(/\./g, '.\u200b')+"\n("+splitUri.pop()+")", tagged:false}})
-         this.cy.add({data:{id:result['obj']['value'], label: nodeLabel, tagged:false}})
-      .style( (this.nodeStyels[result['objType']['value'].split('/').pop()!] || this.nodeStyels["Default"]) );
- //      .style({'shape':'barrel', 'background-color':'#aac','text-wrap':'wrap'});
-      }
-
-      if(this.cy.getElementById(this.currentContextNode.data('id')+result['pred']['value']+ result['obj']['value']).length==0)
-        this.cy.add({data:{id:this.currentContextNode.data('id')+result['pred']['value']+ result['obj']['value'],
-            source:this.currentContextNode.data('id'),
-            target:result['obj']['value'],
-            label:result['pred']['value'].split('/').pop()
-            }}).style({'width':'1'});
-    } );
-
-    this.cy.center();
-    this.cy.zoom(2);
-    this.cy.layout(this.elkoptions).run();
-  }
-
-  //----------------------------------------------------------------------------------------------------
-  onNodeExpandInverse(Results:SparqlResponse)
-  {
-    var sparqlResults = Results.results.bindings;
-    sparqlResults.forEach(result => {
-      // Add nodes for subject and object
-      if(this.cy.getElementById(result['obj']['value']).length==0)
-      {
-        var nodeLabel = "";
-        var splitUri:string[] =[];
-        splitUri = result['obj']['value'].split('/');
-
-
-        if( result['objType'] == undefined)
-          result['objType']={'type':'uri','value':'default'};
-
-
-        if( result['objLabel'] == undefined)
+    if(sparqlResults.length <=10)
+    {
+      // we scan all the results
+      sparqlResults.forEach(result => {
+        // check if the relation node is not already present in the scene
+        if(this.cy.getElementById(result['obj']['value']).length==0)
         {
-          nodeLabel = splitUri.pop()!.replace(/\./g, '.\u200b')+"\n("+splitUri.pop()+")";
+          var nodeLabel = "";
+          var splitUri:string[] =[];
+
+          // create a split URI to take the last part of it
+          splitUri = result['obj']['value'].split('/');
+
+          // if we don't get information about object type in the results we set it a default value
+          if( result['objType'] == undefined)
+            result['objType']={'type':'uri','value':'default'};
+
+          // if we don't get any information about the object label we set it as the last part of the URI
+          if( result['objLabel'] == undefined)
+            {
+              nodeLabel = splitUri.pop()!.replace(/\./g, '.\u200b')+"\n("+splitUri.pop()+")";
+            }
+            else
+              nodeLabel = result['objLabel']['value'].replace(/\./g, '.\u200b')
+
+          // finally we add the new node into the scene
+          this.cy.add({data:{
+                  id:result['obj']['value'],
+                  label: nodeLabel,
+                  tagged:false,
+                  type:'simple'
+                }})
+            .style( (this.nodeStyels[result['objType']['value'].split('/').pop()!] || this.nodeStyels["Default"]) );
+        }
+
+        // add relation
+        if( expandedRelation['relation']['direct'])
+        {
+          var newRelationId = this.currentContextNode.data('id')+result['pred']['value']+ result['obj']['value']+(expandedRelation['relation']['targetType']!==undefined?expandedRelation['relation']['targetType']:"");
+
+          if(this.cy.getElementById(newRelationId).length==0)
+          {
+            this.cy.add({data:{
+                id: newRelationId,
+                source: this.currentContextNode.data('id'),
+                target: result['obj']['value'] ,
+                label:result['pred']['value'].split('/').pop()
+                }}).style({'width':'1'});
+          }
+  
         }
         else
-          nodeLabel = result['objLabel']['value'].replace(/\./g, '.\u200b')
+        {
+          var newRelationId = result['obj']['value']+(expandedRelation['relation']['targetType']!==undefined?expandedRelation['relation']['targetType']:"")+ result['pred']['value']+ this.currentContextNode.data('id');
 
+          if(this.cy.getElementById(newRelationId).length==0)
+          {
+            this.cy.add({data:{
+                id: newRelationId,
+                source:result['obj']['value'],
+                target: this.currentContextNode.data('id'),
+                label:result['pred']['value'].split('/').pop()
+                }}).style({'width':'1'});
+          }
+        }
+      });
+    }
+    // there are more than 10 results so......
+    else // we intantiate the placeholder node to represent multiple nodes
+    {
+      if(expandedRelation['relation']['direct'])
+      {
+        var nodeGroupID = "NODEGROUP_"+this.currentContextNode.data('id')+expandedRelation['relation']['uri']+(expandedRelation['relation']['targetType']!==undefined?expandedRelation['relation']['targetType']:"");
 
-//         this.cy.add({data:{id:result['obj']['value'], label:splitUri.pop()!.replace(/\./g, '.\u200b')+"\n("+splitUri.pop()+")", tagged:false}})
-         this.cy.add({data:{id:result['obj']['value'], label: nodeLabel, tagged:false}})
-      .style( (this.nodeStyels[result['objType']['value'].split('/').pop()!] || this.nodeStyels["Default"]) );
-      //  .style({'shape':'barrel', 'background-color':'#aac'});
+        if(this.cy.getElementById(nodeGroupID).length==0)
+          {
+            // finally we add the new node into the scene
+            this.cy.add({data:{
+                   id: nodeGroupID,
+                   label:  targetNodeType.split('/').pop() +"\n("+sparqlResults.length+")",
+                   tagged:false,
+                   type:'group',
+                   data:sparqlResults
+                  }})
+              .style( (this.nodeStyels["NodeGroup"]) ).style({'background-image':'assets/'+targetNodeType.split('/').pop()+'-group.png'});
+          
+          }
+
+          // add relation
+          var nodeGroupRelationID = "NODEGROUPREL_"+nodeGroupID;
+
+          if(this.cy.getElementById(nodeGroupRelationID).length==0)
+          {
+            this.cy.add({data:{id: nodeGroupRelationID,
+                source: this.currentContextNode.data('id') ,
+                target: nodeGroupID ,
+                label: expandedRelation['relation']['uri'].split('/').pop()
+                }}).style({'width':'2'});
+          }
+      }
+      else
+      {
+        var nodeGroupID = "NODEGROUP_"+(expandedRelation['relation']['targetType']!==undefined?expandedRelation['relation']['targetType']:"")+ expandedRelation['relation']['uri'] + this.currentContextNode.data('id');
+
+        if(this.cy.getElementById(nodeGroupID).length==0)
+          {
+            // finally we add the new node into the scene
+            this.cy.add({data:{
+                    id: nodeGroupID,
+                    label:  targetNodeType.split('/').pop()  +"\n("+sparqlResults.length+")",
+                    tagged:false,
+                    type:'group',
+                    data:sparqlResults
+                  }})
+              .style( (this.nodeStyels["NodeGroup"]) ).style({'background-image':'assets/'+targetNodeType.split('/').pop()+'-group.png'});
+          
+          }
+
+          // add relation
+          var nodeGroupRelationID = "NODEGROUPREL_"+nodeGroupID;
+
+          if(this.cy.getElementById(nodeGroupRelationID).length==0)
+          {
+            this.cy.add({data:{id: nodeGroupRelationID,
+                source: nodeGroupID,
+                target: this.currentContextNode.data('id'),
+                label: expandedRelation['relation']['uri'].split('/').pop()
+                }}).style({'width':'2'});
+          }
+
       }
 
-      if(this.cy.getElementById(result['obj']['value'] + result['pred']['value'] + this.currentContextNode.data('id') ).length==0)
-        this.cy.add({data:{id:result['obj']['value'] + result['pred']['value'] + this.currentContextNode.data('id'),
-            source:result['obj']['value'],
-            target:this.currentContextNode.data('id'),
-            label:result['pred']['value'].split('/').pop()
-            }}).style({'width':'1'});
-    } );
+    }
 
     this.cy.center();
     this.cy.zoom(2);
     this.cy.layout(this.elkoptions).run();
-  }  
+  }
+
 
   //----------------------------------------------------------------------------------------------------
   onTap(evt)
@@ -1006,83 +1049,89 @@ export class CSVisualisationComponent
   {
     var sparqlResults = Results.results.bindings;
     
-    sparqlResults.forEach(result => {
 
-      var newNodeURI = result['sub']['value'];
-      // Add obj node
-      if(this.cy.getElementById(newNodeURI).length==0)
-      {
-        var nodeLabel = "";
-        var splitUri:string[] =[];
-        splitUri = newNodeURI.split('/');
+    if(sparqlResults.length > 0)
+    {
+      sparqlResults.forEach(result => {
 
-        if( result['subLabels'] == undefined)
-          {
-            nodeLabel = splitUri.pop()!.replace(/\./g, '.\u200b')+"\n("+splitUri.pop()+")";
-          }
-          else
-            nodeLabel = result['subLabels']['value'].replace(/\./g, '.\u200b')
+        var newNodeURI = result['sub']['value'];
+        // Add obj node
+        if(this.cy.getElementById(newNodeURI).length==0)
+        {
+          var nodeLabel = "";
+          var splitUri:string[] =[];
+          splitUri = newNodeURI.split('/');
 
-
-//         this.cy.add({data:{id:result['obj']['value'], label:splitUri.pop()!.replace(/\./g, '.\u200b')+"\n("+splitUri.pop()+")", tagged:false}})
-        this.cy.add({data:{id:newNodeURI, label: nodeLabel, tagged:false}})
-          .style( (this.nodeStyels[this.selectValue] || this.nodeStyels["Default"]) );
- //      .style({'shape':'barrel', 'background-color':'#aac','text-wrap':'wrap'});
-      }
-
-      var filterInstances = '';
-      this.taggedNodes.forEach( elem=>{
-        filterInstances += '<'+elem.data('id')+'>';
-        if( this.taggedNodes.indexOf(elem)< (this.taggedNodes.length-1) )
-          filterInstances += ',';
-        });
-      var query=`
-          SELECT distinct ?prop ?direction ?obj ?objLabel WHERE {
-            { 
-                <`+ newNodeURI +`> ?prop ?obj .
-                <`+ newNodeURI +`> rdfs:label ?objLabel .
-                FILTER (?obj in  (`+ filterInstances +` ))
-                BIND( "Direct" as ?direction).
-            }
-            UNION
+          if( result['subLabels'] == undefined)
             {
-                ?obj ?prop <`+ newNodeURI +`> .
-                <`+ newNodeURI +`> rdfs:label ?objLabel .
-                FILTER (?obj in (`+ filterInstances +` ))
-                BIND( "Inverse" as ?direction).
+              nodeLabel = splitUri.pop()!.replace(/\./g, '.\u200b')+"\n("+splitUri.pop()+")";
             }
-          } 
-          LIMIT 10 `;
+            else
+              nodeLabel = result['subLabels']['value'].replace(/\./g, '.\u200b')
 
 
-      this.sparqlService.querySparqlEndpoint(this.endpoint, query )
-        .subscribe({
-          next: (data) =>{
-            var sparqlResults = data.results.bindings;
-            sparqlResults.forEach(result => {   
-            
-            var relSource = result['direction']['value']=='Direct'? newNodeURI : result['obj']['value'] ;
-            var relTarget = result['direction']['value']=='Direct'? result['obj']['value'] : newNodeURI ;
+  //         this.cy.add({data:{id:result['obj']['value'], label:splitUri.pop()!.replace(/\./g, '.\u200b')+"\n("+splitUri.pop()+")", tagged:false}})
+          this.cy.add({data:{id:newNodeURI, label: nodeLabel, tagged:false}})
+            .style( (this.nodeStyels[this.selectValue] || this.nodeStyels["Default"]) );
+  //      .style({'shape':'barrel', 'background-color':'#aac','text-wrap':'wrap'});
+        }
 
-            var newRelationId = relSource + result['prop']['value'] + relTarget;
-
-            if(this.cy.getElementById(newRelationId).length==0)
-            {
-              this.cy.add({data:{
-                    id: newRelationId,
-                    source: relSource,
-                    target: relTarget,
-                    label: result['prop']['value'].split('/').pop()
-              }}).style({'width':'1'});
-            }
-            this.cy.center();
-            this.cy.zoom(2);
-            this.cy.layout(this.elkoptions).run();   
+        var filterInstances = '';
+        this.taggedNodes.forEach( elem=>{
+          filterInstances += '<'+elem.data('id')+'>';
+          if( this.taggedNodes.indexOf(elem)< (this.taggedNodes.length-1) )
+            filterInstances += ',';
           });
-          },
-          error: (error)=> console.error('There was an error!', error)
+        var query=`
+            SELECT distinct ?prop ?direction ?obj ?objLabel WHERE {
+              { 
+                  <`+ newNodeURI +`> ?prop ?obj .
+                  <`+ newNodeURI +`> rdfs:label ?objLabel .
+                  FILTER (?obj in  (`+ filterInstances +` ))
+                  BIND( "Direct" as ?direction).
+              }
+              UNION
+              {
+                  ?obj ?prop <`+ newNodeURI +`> .
+                  <`+ newNodeURI +`> rdfs:label ?objLabel .
+                  FILTER (?obj in (`+ filterInstances +` ))
+                  BIND( "Inverse" as ?direction).
+              }
+            } 
+            LIMIT 10 `;
+
+
+        this.sparqlService.querySparqlEndpoint(this.endpoint, query )
+          .subscribe({
+            next: (data) =>{
+              var sparqlResults = data.results.bindings;
+              sparqlResults.forEach(result => {   
+              
+              var relSource = result['direction']['value']=='Direct'? newNodeURI : result['obj']['value'] ;
+              var relTarget = result['direction']['value']=='Direct'? result['obj']['value'] : newNodeURI ;
+
+              var newRelationId = relSource + result['prop']['value'] + relTarget;
+
+              if(this.cy.getElementById(newRelationId).length==0)
+              {
+                this.cy.add({data:{
+                      id: newRelationId,
+                      source: relSource,
+                      target: relTarget,
+                      label: result['prop']['value'].split('/').pop()
+                }}).style({'width':'1'});
+              }
+              this.cy.center();
+              this.cy.zoom(2);
+              this.cy.layout(this.elkoptions).run();   
+            });
+            },
+            error: (error)=> console.error('There was an error!', error)
+        });
       });
-    });
+    }
+    else
+      this.messageService.add({severity:'warn', summary: 'No Results', detail: 'No results have been found'});
 
 
   }

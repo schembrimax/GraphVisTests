@@ -17,7 +17,7 @@
   }
 
 #contextMenu{
-  position: fixed;
+  position: absolute;
   z-index: 1000;
   width: 200px;
   background-color: #f1f1f1; 
@@ -31,7 +31,15 @@
 }
 
 #nodeMenu{
-  position: fixed;
+  position: absolute;
   z-index: 1000;
   width: 200px;
+}
+
+.floating_element{
+  position: absolute;
+  z-index: 1000;
+  opacity: 20%;
+  background-color: black;
+  border-radius: 15%;
 }
